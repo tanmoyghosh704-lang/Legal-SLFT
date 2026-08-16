@@ -519,3 +519,149 @@ Entry format:
   the obviously cheaper fix to try first.
 
 ---
+
+## 2026-08-17 — Phase 1: Deterministic rubric + DPO corruption functions (built while the Kaggle generation run was in progress)
+
+### What I did
+- Built `src/eval/rubric.py` before any training, per the project's own
+  build order ("it defines what good means") — four components scored
+  independently and reported separately, not blended into one number
+  (spec section 5.1):
+  - `structure_ok`: reuses `parse_irac` (already enforces section order
+    and non-emptiness via the anchored regex).
+  - `groundedness`: the hallucination guard, spec's "most important single
+    check." Two signals combined with `min()`: (a) any quoted span in
+    Application must be a real substring of the source clause, falling
+    back to a word-overlap heuristic when the model paraphrases instead
+    of quoting (documented limitation — the current prompt template
+    doesn't force literal quotation); (b) Rule must not contain invented
+    legal authority (named courts/statutes/"held that"/"precedent") — the
+    teacher prompt explicitly instructs against this, so a rubric that
+    claims to be a hallucination guard needs to check it too.
+  - `length_ok`: graded, not a hard cutoff (catches truncation/rambling).
+  - `no_contradiction`: heuristic term-pair check (enforceable/
+    unenforceable, valid/invalid, etc.) between Application and
+    Conclusion, plus an explicit self-reversal phrase check (see below).
+  - 9 unit tests, plus manual validation against the 5 real smoke-test
+    outputs from 2026-08-16 — scores landed 0.86-1.00 with sensible
+    groundedness variation, no false positives from the stricter checks
+    added later in this session.
+- Built `src/data/corrupt.py`: six corruption types from spec section 3.2
+  (drop section, reorder sections, wrong citation, unsupported claim,
+  contradict conclusion, truncate), each recording which type produced it
+  for the later per-corruption-type breakdown. `make_rejected(chosen_text,
+  rng)` requires a well-formed `chosen_text` (raises `ValueError`
+  otherwise) since corruption only makes sense starting from something
+  already correct.
+- Wrote `tests/test_corrupt.py`, including one integration test that
+  matters more than the others: every corruption type must make the
+  rubric's aggregate score go *down* relative to the uncorrupted chosen
+  response, since that's the entire premise of a DPO pair. Ran it — it
+  failed, twice, against two different corruption types, on first run.
+
+### Why this approach (and what alternative was rejected, and why)
+- Deliberately wrote the "rejected-scores-lower-than-chosen" test to
+  exercise all six corruption types against the actual rubric, rather
+  than just checking "the corrupted text differs from the original."
+  Corruption functions and the rubric are meant to validate each other in
+  this project (corrupted samples should be reliably *worse* under the
+  same rubric used to judge trained-model outputs later) — a test that
+  only checks "text changed" wouldn't catch a corruption type the rubric
+  is blind to, which is exactly what happened.
+- Considered making `no_contradiction` and `groundedness` more
+  sophisticated (e.g. an actual NLI model) instead of keyword heuristics.
+  Rejected for now: the project spec explicitly scopes these as
+  heuristics, and a second model in the loop for *scoring* would blur the
+  dual-metric design (deterministic rubric vs. LLM judge) the project is
+  built around — the rubric's value is being fast, free, and fully
+  reproducible.
+
+### Difficulty encountered (errors, dead ends, surprising results)
+- **Bug 1 — `contradict_conclusion` invisible to `no_contradiction`.**
+  The corruption replaces Conclusion with generic reversal language
+  ("contrary to the analysis above, this clause imposes no enforceable
+  obligation..."). The chosen fixture's Application never mentions
+  "enforceable" (that word was in Rule), so the term-pair heuristic had
+  no matching vocabulary on the Application side and scored the corrupted
+  Conclusion as consistent. First real gap: a hand-picked test fixture +
+  a hand-picked corruption template can fail to overlap in vocabulary
+  purely by accident, and a purely lexical heuristic has no way to notice.
+- **Bug 2 — `unsupported_claim` invisible to `groundedness`.** This
+  corruption inserts fabricated case law/statutory citations into the
+  **Rule** section. `groundedness` at that point only ever looked at
+  Application (checking clause-text grounding) — Rule wasn't checked by
+  *any* rubric component. Structure, length, and contradiction were all
+  unaffected too, so the corrupted sample scored identically to the
+  clean one. This is a more fundamental gap than bug 1: the rubric
+  literally had zero coverage of one of the four IRAC sections, despite
+  the teacher prompt explicitly warning against exactly this failure mode
+  in that section ("do not invent case citations").
+- Both bugs were caught by the same single integration test, on the
+  first run, before either shipped into the actual DPO dataset generation
+  — this is the test earning its keep immediately, not just theoretical
+  value.
+
+### How it was resolved
+- Bug 1: added `REVERSAL_CUES`, a small list of explicit self-reversal
+  phrases ("contrary to the", "notwithstanding the application",
+  "despite the foregoing", etc.) checked directly against Conclusion,
+  independent of the term-pair vocabulary overlap.
+- Bug 2: extended `score_groundedness` to take `rule_text` as well as
+  `application_text`, added `AUTHORITY_RED_FLAGS` (named courts/statutes/
+  "held that"/"precedent"/etc.), and combined the two signals (clause
+  grounding, authority grounding) with `min()` — either one failing sinks
+  the score, appropriate for a check spec calls "the most important
+  single check."
+- Re-ran the full test suite (23 tests) and re-validated against the 5
+  real smoke-test outputs to confirm the stricter checks introduced no
+  false positives on genuine teacher output — identical scores to before
+  the fix.
+
+### What I'd do differently
+- Would write the corruption↔rubric integration test *before* writing
+  the six corruption functions, not after — in this case both bugs were
+  still caught before anything shipped, but designing the validation
+  check first would have made the coverage gaps (Rule section entirely
+  unchecked; Conclusion-reversal vocabulary not overlapping) visible
+  while writing `rubric.py`'s components, rather than as a separate
+  discovery step afterward.
+
+---
+
+## 2026-08-17 — Phase 1: Contract-level splits
+
+### What I did
+- Built `src/data/split.py`: `assign_splits()` maps each unique contract
+  to train/valid/test once (sorted-then-shuffled for order-independent
+  determinism, seed-controlled), `split_records()` applies that mapping to
+  any list of records with a `contract` field — used identically for SFT
+  rows and, later, DPO pairs, so a contract lands in the same split in
+  both datasets.
+- 7 unit tests, including the one that actually matters:
+  `test_no_contract_leaks_across_splits` — builds 200 synthetic contracts
+  with 5 clauses each, splits them, and asserts no single contract's
+  clauses appear in more than one split.
+- Ran it against the real 7,620-row queue (384 contracts): **307/38/39**
+  contracts (train/valid/test), **6,039/897/684** rows — close to the
+  configured 80/10/10 at the contract level; row-level ratios drift
+  slightly (≈79%/12%/9%) since contracts don't all contain the same
+  number of eligible clauses, which is expected and fine given the split
+  unit is deliberately the contract, not the row.
+
+### Why this approach (and what alternative was rejected, and why)
+- Sort-then-shuffle rather than shuffling a set/dict directly — Python
+  set iteration order isn't guaranteed stable across processes even with
+  the same seed for other RNG state, so sorting first removes that as a
+  hidden source of non-determinism before the seeded shuffle runs.
+- `split_records()` takes a generic `contract_key` and operates on plain
+  dicts rather than being hardcoded to the SFT row schema, specifically
+  so the same function applies unchanged to DPO pairs once they exist —
+  one splitting implementation, not one per dataset shape.
+
+### Difficulty encountered
+- None of note — this one worked as designed on the first pass, unlike
+  the rubric/corruption pair. Worth noting precisely because it's the
+  exception: most of this session's components have needed at least one
+  real fix after the first test run.
+
+---
