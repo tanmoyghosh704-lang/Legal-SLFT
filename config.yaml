@@ -1,0 +1,115 @@
+# Central config for the legal-slm-alignment project.
+# Every script (data prep, training, eval, serving) reads model name,
+# paths, and hyperparameters from here — nothing hardcoded per-script,
+# so swapping the base model or changing a run's hyperparameters means
+# editing one file, not N scripts.
+
+project:
+  name: legal-slm-alignment
+  seed: 42
+
+model:
+  # Active model used by all scripts until Llama-3.2-3B access is granted.
+  # Swap `active` to "llama_3b" once HF access is approved — nothing else
+  # needs to change, run IDs and results tables are keyed by this value.
+  active: qwen_3b
+  candidates:
+    llama_3b:
+      hf_id: meta-llama/Llama-3.2-3B-Instruct
+      gated: true
+      status: access_requested_2026-08-15
+    qwen_3b:
+      hf_id: Qwen/Qwen2.5-3B-Instruct
+      gated: false
+      status: available
+    phi3_mini:
+      hf_id: microsoft/Phi-3-mini-4k-instruct
+      gated: false
+      status: available
+  smoke_test:
+    hf_id: Qwen/Qwen2.5-0.5B-Instruct
+    ollama_equivalent: qwen2.5:0.5b-instruct-q4_0
+    note: >
+      Used for local pipeline validation only (Build Order step 7).
+      Never used for the real ablation results.
+
+ollama:
+  teacher_model: qwen2.5:7b-instruct-q4_0   # SFT target generation
+  judge_model: qwen2.5:7b-instruct-q4_0     # LLM-as-judge scoring
+  host: http://localhost:11434
+
+datasets:
+  primary: cuad
+  cuad:
+    hf_id: theatticusproject/cuad-qa   # verify exact HF dataset id during Phase 1 EDA
+  optional:
+    - ledgar
+    - casehold
+
+data:
+  raw_dir: data/raw
+  splits_dir: data/splits
+  split_ratios: {train: 0.8, valid: 0.1, test: 0.1}
+  split_unit: contract   # never split by clause — leakage across train/test
+
+irac_template:
+  sections: [Issue, Rule, Application, Conclusion]
+  # Single canonical prompt + target template, defined in
+  # src/data/build_irac.py and imported everywhere else. Never redefine
+  # inline in a training or eval script — template drift invalidates the
+  # cross-run comparison this project exists to make.
+
+peft:
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+  qlora_4bit: {load_in_4bit: true, bnb_4bit_quant_type: nf4, bnb_4bit_compute_dtype: bfloat16}
+
+training:
+  max_seq_length: 2048
+  sft:
+    epochs: 3
+    per_device_batch_size: 4
+    gradient_accumulation_steps: 4
+    learning_rate: 2.0e-4
+  dpo:
+    epochs: 1
+    per_device_batch_size: 2
+    gradient_accumulation_steps: 4
+    learning_rate: 5.0e-5
+    beta: 0.1   # start here; log every trial if changed
+
+runs:
+  # One row per run in results/summary.csv. minimum_viable marks the set
+  # to prioritize if Kaggle GPU hours run short.
+  - id: baseline
+    method: none
+    peft: null
+    minimum_viable: true
+  - id: sft_qlora
+    method: sft
+    peft: qlora_4bit_r8
+    minimum_viable: true
+  - id: sft_lora_fp
+    method: sft
+    peft: lora_fullprecision_r8
+    minimum_viable: false
+  - id: dpo_from_sft
+    method: dpo
+    peft: qlora_4bit_r8
+    warm_start: sft_qlora
+    minimum_viable: true
+  - id: dpo_from_base
+    method: dpo
+    peft: qlora_4bit_r8
+    warm_start: null
+    minimum_viable: false
+
+mlflow:
+  tracking_uri: file:./mlruns
+  experiment_name: legal-slm-alignment
+
+paths:
+  adapters_dir: adapters
+  results_dir: results

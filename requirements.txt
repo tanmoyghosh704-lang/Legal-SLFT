@@ -1,0 +1,37 @@
+# Full dependency list for this project. Not all of these are installed
+# locally at once — heavy training deps (torch/transformers/trl/peft/
+# bitsandbytes) are only needed for the local 0.5B smoke test and mirror
+# what Kaggle installs; the real training runs happen on Kaggle directly.
+# See LOG.md for what's installed locally at each phase.
+
+# --- data prep / local dev (installed first) ---
+pyyaml
+requests
+pandas
+datasets
+huggingface_hub
+tqdm
+jsonlines
+scikit-learn
+
+# --- training (installed before local smoke test; mirrored in Kaggle notebook) ---
+torch
+transformers
+trl
+peft
+bitsandbytes
+accelerate
+mlflow
+
+# --- eval ---
+ollama
+
+# --- serving ---
+fastapi
+uvicorn
+
+# --- versioning ---
+dvc
+
+# --- testing ---
+pytest

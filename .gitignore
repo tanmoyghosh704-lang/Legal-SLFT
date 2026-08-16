@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data & artifacts (large; not committed — see LOG.md for DVC plan)
+data/raw/
+data/splits/*.jsonl
+adapters/*/
+mlruns/
+kaggle_upload/
+
+# Kaggle / notebooks checkpoint junk
+.ipynb_checkpoints/
+
+# Env
+.env
+
+# OS
+.DS_Store
+Thumbs.db
