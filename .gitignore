@@ -4,9 +4,10 @@ __pycache__/
 .venv/
 venv/
 
-# Data & artifacts (large; not committed — see LOG.md for DVC plan)
+# Data & artifacts (large; not committed directly — DVC-tracked instead,
+# see LOG.md 2026-08-17. `dvc add` manages its own ignore entries for
+# data/splits/ and data/datasets/.)
 data/raw/
-data/splits/*.jsonl
 adapters/*/
 mlruns/
 kaggle_upload/

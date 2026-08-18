@@ -36,13 +36,30 @@ Clause text: {clause_text}
 Analyze this clause using IRAC format. Respond with exactly four sections, \
 each starting on its own line with the section name followed by a colon, \
 in this order: Issue, Rule, Application, Conclusion. Do not include any \
-text before Issue: or after the Conclusion section."""
+text before Issue: or after the Conclusion section.
+
+"""  # trailing blank line is load-bearing, see comment below
+
+# Trailing "\n\n" above is required, not stylistic: trl's SFTTrainer computes
+# the completion-only loss mask by tokenizing the prompt alone, then slicing
+# the jointly-tokenized prompt+completion at that same token length. Without
+# a separator, "...section." (prompt) directly abutting "Issue" (completion)
+# lets BPE merge across the boundary into a single ".I"-ish token, which
+# lands on the masked side -- silently dropping the completion's first token
+# from every training example's loss. Confirmed via manual tokenizer
+# inspection during the local smoke test. See LOG.md 2026-08-17.
 
 # Instruction to the teacher model (Kaggle-hosted Qwen2.5-7B-Instruct or
 # local Ollama for smoke-testing) generating SFT targets. Adds groundedness
 # constraints that the canonical student-facing prompt doesn't need to
 # spell out, since the teacher's job is specifically to produce clean
 # training targets, not just any answer.
+# The "no unsupported gloss" line was added 2026-08-17, after manual review
+# of the already-generated dataset (data/raw/sft_teacher_targets.jsonl)
+# found ~4-5/60 sampled rows where the teacher added a condition or
+# mechanism -- most commonly "without [Party]'s consent" -- that wasn't
+# actually stated in the clause text. It postdates that generation run;
+# only applies if/when the dataset is regenerated. See LOG.md 2026-08-17.
 TEACHER_GENERATION_TEMPLATE = CANONICAL_PROMPT_TEMPLATE + """
 
 Additional instructions for this analysis:
@@ -50,6 +67,8 @@ Additional instructions for this analysis:
 principles relevant to this clause category — do not invent case citations.
 - The Application section must refer only to language actually present in \
 the clause text above. Do not assume facts not stated in the clause.
+- Do not introduce any condition, requirement, or mechanism (such as a \
+consent requirement) that is not stated in the clause text above.
 - Keep each section to 2-4 sentences.
 - The Conclusion must follow logically from the Application — do not \
 contradict it."""
@@ -92,6 +111,25 @@ def format_target(sections: dict) -> str:
 CATEGORY_RE = re.compile(r'related to "([^"]+)"')
 
 
+def is_substantive_clause(text: str, min_words: int = 8) -> bool:
+    """CUAD's extracted answer spans are occasionally fragments too short
+    to analyze at all: a single word ("This"), a bare sentence fragment
+    ("transferable or assignable."), or a mid-sentence truncation ("If the
+    Minimum Efficiency Level has"). The teacher model dutifully produces a
+    full four-section IRAC analysis for these anyway (it's not equipped to
+    refuse), which is exactly the behavior a trained model shouldn't learn.
+
+    Found via manual review of the real generated dataset, not caught
+    upstream before generation — see LOG.md 2026-08-17. A word-count floor
+    doesn't catch every case (some fragments are 30-40 words but still
+    syntactically incomplete, e.g. a definitions clause cut mid-list), but
+    it's a cheap, safe filter for the clearest garbage: real CUAD clauses
+    have a median length of ~31 words, so 8 is a conservative floor that
+    won't remove genuine short-but-complete clauses.
+    """
+    return len(re.findall(r"[a-zA-Z]{2,}", text)) >= min_words
+
+
 def load_cuad_filtered():
     """Load the canonical theatticusproject/cuad-qa via HF's auto-generated
     parquet branch (refs/convert/parquet), rather than the deprecated
@@ -116,12 +154,15 @@ def load_cuad_filtered():
         category = match.group(1)
         if category in EXCLUDED_CATEGORIES:
             continue
+        clause_text = ex["answers"]["text"][0].strip()
+        if not is_substantive_clause(clause_text):
+            continue
         rows.append(
             {
                 "id": ex["id"],
                 "contract": ex["title"],
                 "category": category,
-                "clause_text": ex["answers"]["text"][0].strip(),
+                "clause_text": clause_text,
             }
         )
     return rows

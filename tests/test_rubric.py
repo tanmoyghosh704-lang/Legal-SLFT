@@ -1,4 +1,4 @@
-from src.eval.rubric import score_no_contradiction, score_response
+from src.eval.rubric import score_groundedness, score_no_contradiction, score_response
 
 CLAUSE = (
     "Either party may terminate this Agreement upon thirty (30) days "
@@ -100,3 +100,90 @@ def test_no_contradiction_when_topic_absent():
         "The clause requires thirty days notice.",
         "The clause is a standard mutual termination provision.",
     ) == 1.0
+
+
+def test_no_false_positive_when_conclusion_only_uses_negative_form():
+    """Regression test: "enforceable" is a literal substring of
+    "unenforceable". Application asserting "enforceable" must not be
+    treated as also asserting "unenforceable" just because that word
+    contains it -- caught on the real 7,620-row teacher-generated dataset,
+    see LOG.md 2026-08-17."""
+    assert score_no_contradiction(
+        "The clause is enforceable under state law.",
+        "Therefore, the clause is unenforceable.",
+    ) == 0.0  # this IS a real contradiction -- opposite pair, both unhedged
+
+
+def test_no_false_positive_on_hedged_risk_then_remedy():
+    """Application flags a defect that *may* cause a problem; Conclusion
+    recommends a fix *to ensure* the good outcome. Consistent reasoning
+    (risk identified, remedy proposed), not a contradiction -- this exact
+    pattern false-positived on the real dataset before the hedge-word
+    guard was added."""
+    assert score_no_contradiction(
+        "The lack of these details may render the clause overly broad and potentially unenforceable.",
+        "The clause should be clarified to ensure it is enforceable.",
+    ) == 1.0
+
+
+def test_no_false_positive_on_scope_limited_application():
+    """"Applies to X ... does not extend to Y outside X" and "does not
+    apply outside X" are the same claim about limited scope stated twice,
+    not a contradiction. (applies/does not apply was dropped entirely from
+    CONTRADICTION_PAIRS after this exact false positive on the real
+    dataset -- kept as a regression test in case it's ever re-added.)"""
+    assert score_no_contradiction(
+        "The clause applies to interactions within Covered Regions and does not extend to "
+        "solicitation activities outside these regions.",
+        "The obligation is geographically limited and does not apply to solicitation "
+        "activities outside these regions.",
+    ) == 1.0
+
+
+def test_condition_precedent_is_not_flagged_as_invented_authority():
+    """"Condition precedent" is a standard contract-law term of art (a
+    condition that must occur before a duty arises) -- nothing to do with
+    case-law precedent. A bare "precedent" substring check flagged this as
+    invented legal authority on the real 7,620-row dataset; fixed by
+    requiring qualified case-law phrases instead. See LOG.md 2026-08-17."""
+    application = "The Publishers must exercise their renewal right each year to remain eligible."
+    rule = (
+        "A conditional right to renew typically requires the fulfillment of a specific "
+        "condition precedent before the renewal right can be exercised."
+    )
+    clause = "The Publishers exercise their renewal right each year to remain eligible."
+    assert score_groundedness(application, rule, clause) > 0.0
+
+
+def test_genuine_case_law_citation_still_flagged():
+    application = "The clause requires notice before termination."
+    rule = "This reading is supported by binding precedent in a closely analogous dispute."
+    clause = "The clause requires notice before termination."
+    assert score_groundedness(application, rule, clause) == 0.0
+
+
+def test_self_hedging_conclusion_flagged():
+    """Real case from manual review of the full dataset: Conclusion
+    confidently asserts something, then hedges the same point in the same
+    sentence -- self-undermining, and invisible to the term-pair check
+    (no shared vocabulary). See LOG.md 2026-08-17."""
+    application = (
+        "The clause limits the number of audits to one for any fiscal year. It does not "
+        'specify whether this applies to all Participants collectively or to each '
+        "Participant individually."
+    )
+    conclusion = (
+        "The clause effectively caps the total number of audits to one per fiscal year "
+        "for all Participants combined, but it is unclear if this applies to each "
+        "Participant individually or collectively."
+    )
+    assert score_no_contradiction(application, conclusion) == 0.0
+
+
+def test_honest_uncertainty_without_prior_claim_not_flagged():
+    """A Conclusion that honestly states its finding is uncertain, without
+    first confidently asserting the opposite, is a legitimate conclusion
+    -- not every mention of "unclear" is self-contradictory."""
+    application = "The clause does not specify a notice period for termination."
+    conclusion = "It is unclear whether notice is required at all under this clause."
+    assert score_no_contradiction(application, conclusion) == 1.0

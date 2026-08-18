@@ -67,11 +67,24 @@ peft:
   qlora_4bit: {load_in_4bit: true, bnb_4bit_quant_type: nf4, bnb_4bit_compute_dtype: bfloat16}
 
 training:
-  max_seq_length: 2048
+  # Reduced from 2048 after checking actual tokenized prompt+target length
+  # across all three splits: max observed was 983 (train), 775 (test), 733
+  # (valid); p99 was under 630 everywhere. 2048 was never once being used,
+  # just adding needless worst-case memory/compute headroom on every batch
+  # that happens to contain a longer example. 1024 keeps ~4% margin above
+  # the true max with no truncation risk. See LOG.md 2026-08-18.
+  max_seq_length: 1024
   sft:
     epochs: 3
-    per_device_batch_size: 4
-    gradient_accumulation_steps: 4
+    # per_device_batch_size dropped 4->2 (grad accum doubled 4->8 to keep
+    # the same effective batch size of 16) after an OOM on Kaggle's T4:
+    # batch_size=4 at max_seq_length=2048 left <100MB free with a 3B model
+    # even after adding gradient_checkpointing (train_sft.py). Extra
+    # safety margin, not just the checkpointing fix alone, since a second
+    # failed Kaggle run costs real weekly GPU-hour quota. See LOG.md
+    # 2026-08-18.
+    per_device_batch_size: 2
+    gradient_accumulation_steps: 8
     learning_rate: 2.0e-4
   dpo:
     epochs: 1

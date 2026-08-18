@@ -75,7 +75,14 @@ def test_rejected_scores_lower_than_chosen_on_rubric():
     was derived from, since that's the entire premise of the DPO pair."""
     chosen_score = score_response(CHOSEN, CLAUSE).aggregate
     for corruption_type in CORRUPTION_TYPES:
-        rng = random.Random(hash(corruption_type) % 1000)
+        # Seed with the string directly, not hash(corruption_type): builtin
+        # hash() on strings is randomized per-process (PYTHONHASHSEED)
+        # unless disabled, which made this test flaky -- caught when it
+        # failed non-deterministically across reruns with no code change.
+        # random.Random's own seeding of str/bytes uses SHA-512 internally,
+        # so it's stable regardless of PYTHONHASHSEED. Same class of bug as
+        # build_dpo.py's _seed_from_id, see LOG.md 2026-08-17.
+        rng = random.Random(corruption_type)
         rejected_text, actual_type = make_rejected(CHOSEN, rng)
         rejected_score = score_response(rejected_text, CLAUSE).aggregate
         assert rejected_score < chosen_score, (
@@ -92,3 +99,14 @@ def test_corruption_type_distribution_over_many_seeds():
         _, corruption_type = make_rejected(CHOSEN, random.Random(i))
         seen.add(corruption_type)
     assert seen == set(CORRUPTION_TYPES)
+
+
+def test_seed_from_id_is_deterministic_across_process_semantics():
+    """Guards against a real bug caught before shipping: builtin hash() is
+    randomized per-process (PYTHONHASHSEED) unless disabled, so using it
+    to seed corruption would silently produce different corruption types
+    on every run. hashlib-based seeding must be stable. See LOG.md
+    2026-08-17."""
+    from src.data.build_dpo import _seed_from_id
+    assert _seed_from_id("some_row_id_0") == _seed_from_id("some_row_id_0")
+    assert _seed_from_id("some_row_id_0") != _seed_from_id("some_row_id_1")

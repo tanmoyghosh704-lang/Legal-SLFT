@@ -26,15 +26,19 @@ QUOTE_RE = re.compile(r'"([^"]{4,})"')
 # polarity and Conclusion asserts the other for the same underlying claim,
 # that's a direct contradiction. Heuristic, not an NLI model — see spec
 # section 5.1, "no contradiction markers ... (heuristic)".
+#
+# ("applies", "does not apply") and ("renews", "does not renew") were
+# dropped after running this on the real 7,620-row teacher-generated
+# dataset: both are scope/conditional pairs that legitimate IRAC analysis
+# routinely uses together in one consistent claim ("applies to X ... does
+# not extend to Y outside X") -- a real false positive, not a contradiction.
+# See LOG.md 2026-08-17.
 CONTRADICTION_PAIRS = [
     ("enforceable", "unenforceable"),
     ("enforceable", "not enforceable"),
     ("valid", "invalid"),
     ("permitted", "prohibited"),
     ("permitted", "not permitted"),
-    ("applies", "does not apply"),
-    ("renews", "does not renew"),
-    ("renews", "will not renew"),
     ("obligated", "not obligated"),
     ("liable", "not liable"),
     ("required", "not required"),
@@ -83,9 +87,19 @@ def score_structure(sections: dict | None) -> float:
 # test_rejected_scores_lower_than_chosen_on_rubric caught unsupported_claim
 # corruptions (inserted into Rule) being invisible to groundedness, since
 # that check only ever looked at Application. See LOG.md 2026-08-17.
+# Note: bare "precedent" is deliberately excluded. "Condition precedent"
+# (a condition that must occur before a duty arises) is a completely
+# standard, legitimate contract-law term of art with nothing to do with
+# case law -- flagging it as invented authority was a real false positive
+# found on the real 7,620-row dataset (Rule text: "...requires the
+# fulfillment of a specific condition precedent before the renewal right
+# can be exercised"). Only qualified phrases that actually mean case-law
+# precedent are listed here. See LOG.md 2026-08-17.
 AUTHORITY_RED_FLAGS = [
     "court of chancery", "uniform commercial code", "federal preemption",
-    "held that", "ruling", "precedent", "case law", "prior litigation",
+    "held that", "ruling", "case precedent", "legal precedent",
+    "binding precedent", "sets a precedent", "sets precedent",
+    "as a precedent", "case law", "prior litigation",
     "consistently upheld", "void as against public policy",
 ]
 
@@ -157,6 +171,67 @@ REVERSAL_CUES = [
     "opposite conclusion", "should be disregarded",
 ]
 
+# A sentence containing one of these is describing a risk, condition, or
+# recommendation ("may render it unenforceable", "to ensure it is
+# enforceable") rather than asserting the term as a present fact. Without
+# this guard, real teacher output on the full 7,620-row dataset false-
+# positived on exactly this pattern: Application flags a defect that
+# *could* cause a problem, Conclusion recommends a fix to *ensure* the
+# good outcome -- consistent reasoning, not a contradiction. See LOG.md
+# 2026-08-17.
+HEDGE_WORDS = [
+    "may ", "may render", "might ", "could ", "potentially", "to ensure",
+    "in order to", "need to", "needs to", "would need", "unless", "if the",
+    "if it", "should be", "clarif",
+]
+
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _asserted(text_lower: str, term: str) -> bool:
+    """True if `term` appears, as a whole word/phrase, in some sentence of
+    text_lower that isn't hedged -- a hedged sentence describes a risk/
+    condition/recommendation, not a present-tense assertion of the term.
+
+    Word-boundary match, not plain substring: "enforceable" is a literal
+    substring of "unenforceable", so a plain `in` check would count
+    "unenforceable" as asserting *both* "enforceable" and "unenforceable"
+    simultaneously, defeating the pair's mutual exclusivity.
+    """
+    pattern = re.compile(rf"\b{re.escape(term)}\b")
+    for sentence in SENTENCE_SPLIT_RE.split(text_lower):
+        if pattern.search(sentence) and not any(h in sentence for h in HEDGE_WORDS):
+            return True
+    return False
+
+
+# A Conclusion sentence that confidently asserts something and then
+# immediately hedges the same point ("...effectively caps X for all
+# Participants combined, but it is unclear if this applies to each
+# Participant individually or collectively") is self-undermining
+# regardless of subject matter -- IRAC's Conclusion is supposed to
+# conclude, not equivocate in the same breath it just asserted something.
+# Found via manual review of the real dataset (a case the term-pair check
+# structurally can't catch -- no shared vocabulary between the confident
+# claim and the hedge). Deliberately narrow: requires an uncertainty
+# marker *and* a contrastive conjunction in the same sentence, so a
+# Conclusion that honestly states "it is unclear whether X" as its actual
+# finding (no preceding contradicted claim) isn't penalized -- see LOG.md
+# 2026-08-17.
+UNCERTAINTY_MARKERS = [
+    "unclear if", "unclear whether", "not clear whether", "not clear if",
+    "uncertain whether", "ambiguous whether", "it is unclear",
+]
+CONTRAST_CUES = [" but ", ", but", " however", "; however", ", yet "]
+
+
+def _self_hedging_conclusion(conclusion_lower: str) -> bool:
+    for sentence in SENTENCE_SPLIT_RE.split(conclusion_lower):
+        if any(m in sentence for m in UNCERTAINTY_MARKERS) and \
+           any(c in sentence for c in CONTRAST_CUES):
+            return True
+    return False
+
 
 def score_no_contradiction(application_text: str, conclusion_text: str) -> float:
     application = application_text.lower()
@@ -165,12 +240,14 @@ def score_no_contradiction(application_text: str, conclusion_text: str) -> float
     if any(cue in conclusion for cue in REVERSAL_CUES):
         return 0.0
 
+    if _self_hedging_conclusion(conclusion):
+        return 0.0
+
     for pos, neg in CONTRADICTION_PAIRS:
-        app_pos = pos in application and neg not in application
-        app_neg = neg in application
-        concl_pos = pos in conclusion and neg not in conclusion
-        concl_neg = neg in conclusion
-        if (app_pos and concl_neg) or (app_neg and concl_pos):
+        app_pos, app_neg = _asserted(application, pos), _asserted(application, neg)
+        concl_pos, concl_neg = _asserted(conclusion, pos), _asserted(conclusion, neg)
+        if (app_pos and not app_neg and concl_neg and not concl_pos) or \
+           (app_neg and not app_pos and concl_pos and not concl_neg):
             return 0.0
     return 1.0
 

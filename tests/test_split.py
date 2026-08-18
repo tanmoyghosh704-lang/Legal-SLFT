@@ -1,4 +1,4 @@
-from src.data.split import assign_splits, split_records
+from src.data.split import assign_splits, find_duplicate_documents, split_records
 
 RATIOS = {"train": 0.8, "valid": 0.1, "test": 0.1}
 
@@ -76,3 +76,58 @@ def test_small_n_no_split_starves_via_rounding():
     assignment = assign_splits(contracts, RATIOS, seed=1)
     assert len(assignment) == 7
     assert set(assignment.values()) <= {"train", "valid", "test"}
+
+
+def test_duplicate_document_under_different_title_detected():
+    """Real case from the full dataset: the same contract filed twice
+    under different title strings shares many identical clauses and has
+    matching normalized company names. See LOG.md 2026-08-17."""
+    shared_clause = lambda i: {"clause_text": f"shared clause {i}"}
+    records = (
+        [{"contract": "ARMSTRONGFLOORING,INC_01_07_2019-EX-10.2-INTELLECTUAL PROPERTY AGREEMENT",
+          **shared_clause(i)} for i in range(4)]
+        + [{"contract": "ArmstrongFlooringInc_20190107_8-K_EX-10.2_11471795_EX-10.2_Intellectual Property Agreement",
+            **shared_clause(i)} for i in range(4)]
+    )
+    canonical = find_duplicate_documents(records)
+    a = "ARMSTRONGFLOORING,INC_01_07_2019-EX-10.2-INTELLECTUAL PROPERTY AGREEMENT"
+    b = "ArmstrongFlooringInc_20190107_8-K_EX-10.2_11471795_EX-10.2_Intellectual Property Agreement"
+    assert canonical[a] == canonical[b]
+
+
+def test_different_companies_sharing_boilerplate_not_merged():
+    """Real false-positive case avoided: two genuinely different companies
+    (different real contracts) shared 5 identical clauses purely from
+    reusing the same boilerplate agreement template. Shared-clause count
+    alone would wrongly merge them; the company-name-prefix check must
+    also match. See LOG.md 2026-08-17."""
+    shared_clause = lambda i: {"clause_text": f"boilerplate clause {i}"}
+    records = (
+        [{"contract": "INTELLIGENTHIGHWAYSOLUTIONS,INC_01_18_2018-EX-10.1-Strategic Alliance Agreement",
+          **shared_clause(i)} for i in range(5)]
+        + [{"contract": "SIBANNAC,INC_12_04_2017-EX-2.1-Strategic Alliance Agreement",
+            **shared_clause(i)} for i in range(5)]
+    )
+    canonical = find_duplicate_documents(records)
+    assert canonical == {}
+
+
+def test_no_leakage_after_document_dedup():
+    """The actual guarantee that matters: once two titles are recognized
+    as the same document, their combined clauses always land in the same
+    split -- never partially in train and partially in test."""
+    shared_clause = lambda i: {"clause_text": f"shared clause {i}"}
+    records = (
+        [{"contract": "ARMSTRONGFLOORING,INC_01_07_2019-EX-10.2-INTELLECTUAL PROPERTY AGREEMENT",
+          **shared_clause(i)} for i in range(4)]
+        + [{"contract": "ArmstrongFlooringInc_20190107_8-K_EX-10.2_11471795_EX-10.2_Intellectual Property Agreement",
+            **shared_clause(i)} for i in range(4)]
+        + make_records(n_contracts=50, clauses_per_contract=3)
+    )
+    result = split_records(records, RATIOS, seed=1)
+    splits_seen = set()
+    for split_name, rows in result.items():
+        for r in rows:
+            if "Armstrong" in r["contract"] or "ARMSTRONG" in r["contract"]:
+                splits_seen.add(split_name)
+    assert len(splits_seen) == 1
