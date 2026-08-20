@@ -1,0 +1,46 @@
+Rows: 35   Judge assessment upheld: 19/35 (54%)
+
+Verdict distribution
+  both_right    14  (40%)
+  both_wrong     9  (26%)
+  judge_wrong    7  (20%)
+  judge_right    5  (14%)
+
+Judge upheld, by run_id
+  baseline        5/7   both_right:4, judge_right:1, judge_wrong:1, both_wrong:1
+  dpo_from_base   3/7   both_wrong:4, both_right:2, judge_right:1
+  dpo_from_sft    5/9   both_right:3, judge_right:2, judge_wrong:2, both_wrong:2
+  sft_lora_fp     3/6   judge_wrong:2, both_right:2, both_wrong:1, judge_right:1
+  sft_qlora       3/6   both_right:3, judge_wrong:2, both_wrong:1
+
+Judge upheld, by sample_reason
+  low_judge_score              6/15 (40%)
+  random                       9/10 (90%)
+  rubric_judge_disagreement    4/10 (40%)
+
+Judge upheld, by judge_overall
+  score 2: 2/2 upheld
+  score 3: 3/11 upheld
+  score 4: 4/11 upheld
+  score 5: 10/11 upheld
+
+FAILURE MODES
+1. Phantom omission critique (rows 0,1,5,13,21,22 - 6 rows, all scored 3-4).
+   Judge writes "could be more explicit about X" where X is stated verbatim in the response.
+   Every one of these is a false penalty. This is the single largest source of judge error here
+   and it depresses scores on correct answers, compressing the top of the scale.
+2. Blind to degenerate repetition (rows 25,29). Responses loop verbatim until truncation;
+   judge critiques content only and never notes the degeneration.
+3. Blind to party/role inversion (rows 8,11,14,19,34 - 5 rows). Where a response swaps who owes
+   the duty, the judge lands on a roughly-low score for an unrelated reason. Directionally right,
+   diagnostically wrong - so the score is not evidence the judge understood the clause.
+4. Groundedness 5 on invented content (rows 24,33). Row 33 hallucinates an entity name and the
+   judge states "there are no invented facts". Groundedness is the least trustworthy sub-score.
+
+CALIBRATION
+  Same MICOA fragment, comparable answers, scores 3/3/3/4/3 (rows 1,8,32,34 vs 26).
+  Same Nantz misread scored 2 (rows 25,31) and 3 (rows 16,28).
+  Judge is inconsistent across identical inputs; treat 1-point gaps as noise.
+
+CAUTION: verdicts above are model-generated, not human. Use for triage and to prioritise
+human review; do not report as inter-rater agreement.

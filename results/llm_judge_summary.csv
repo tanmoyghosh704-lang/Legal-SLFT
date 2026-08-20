@@ -1,0 +1,6 @@
+run_id,n,groundedness,reasoning_quality,overall,parse_ok_rate
+baseline,150,4.6333,4.64,4.6333,1.0
+sft_qlora,150,4.7933,4.8133,4.7933,1.0
+sft_lora_fp,150,4.7667,4.7867,4.76,1.0
+dpo_from_sft,150,4.8067,4.8,4.7933,1.0
+dpo_from_base,150,4.8267,4.84,4.82,1.0

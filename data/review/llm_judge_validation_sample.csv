@@ -1,0 +1,315 @@
+run_id,id,sample_reason,category,clause_text,raw_response,rubric_aggregate,judge_groundedness,judge_reasoning_quality,judge_overall,judge_rationale,disagreement,human_verdict,human_notes
+sft_lora_fp,EuromediaHoldingsCorp_20070215_10SB12G_EX-10.B(01)_525118_EX-10.B(01)_Content License Agreement__Most Favored Nation_2,low_judge_score,Most Favored Nation,"Licensor shall provide to Rogers, no later than February 28 in each year, a sworn statement of a senior officer of Licensor, or a certificate of the auditors of Licensor, confirming that, during the immediately preceding calendar year, Licensor did not enter into such an agreement or series of agreements or, if it did enter into such agreement(s), confirming the effective date thereof and identifying the terms contained therein that are more favourable than those contained in this Agreement.","Issue: The scope and enforceability of a Most Favored Nation (MFN) clause in a licensing agreement.
+
+Rule: An MFN clause obligates the licensor to provide the licensee with the most favorable terms available to third parties, ensuring the licensee receives the best possible deal. This obligation is enforceable as long as it is clearly stated and does not violate antitrust laws.
+
+Application: The clause requires the Licensor to provide Rogers with a sworn statement or certificate from a senior officer or auditors confirming that the Licensor did not enter into more favorable agreements in the previous year. If such agreements were entered into, the clause mandates disclosure of the terms and the effective date. This ensures Rogers receives the most favorable terms available to third parties, aligning with the MFN principle.
+
+Conclusion: The clause is enforceable as it clearly defines the obligations of the Licensor to provide Rogers with the most favorable terms, thereby protecting Rogers from being disadvantaged by the Licensor's actions towards other parties.",1.0,4,3,3,"The analysis is generally faithful to the clause text but does not fully capture the requirement for a sworn statement or certificate. The reasoning is coherent but does not fully address the specific requirements of the MFN clause, such as the need for a sworn statement or the requirement to disclose more favorable terms. The overall score reflects that while the analysis is useful, it could be more precise and comprehensive.",0.5,,
+sft_qlora,AMERICANPHYSICIANSCAPITALINC_03_31_2003-EX-10.26-AGENCY AGREEMENT__Non-Compete_1,low_judge_score,Non-Compete,In return for the exclusive appointment of Agency by MICOA to                   sell its professional liability products listed on the,"Issue: The scope and enforceability of a non-compete clause in a contract.
+
+Rule: Non-compete clauses are generally enforceable if they are reasonable in scope and duration, do not unduly restrict the employee's ability to earn a living, and are narrowly tailored to protect legitimate business interests.
+
+Application: The clause requires the Agency to be exclusive in selling MICOA's professional liability products. This exclusivity is tied to the exclusive appointment by MICOA, suggesting that the Agency cannot sell these products to other clients. However, the clause does not specify the duration of this exclusivity or the geographic scope, which are critical factors for determining reasonableness.
+
+Conclusion: The clause is incomplete as it lacks specific details regarding the duration and geographic scope of the exclusivity, making it difficult to assess its reasonableness and enforceability without additional information.",1.0,3,4,3,"The analysis is somewhat grounded in the clause text but makes assumptions about the exclusivity being tied to an appointment, which is not explicitly stated. The reasoning is coherent but could be more directly tied to the clause's text. The overall score reflects that while the analysis is useful, it could be more precise and less speculative.",0.5,,
+dpo_from_sft,EuromediaHoldingsCorp_20070215_10SB12G_EX-10.B(01)_525118_EX-10.B(01)_Content License Agreement__Most Favored Nation_2,low_judge_score,Most Favored Nation,"Licensor shall provide to Rogers, no later than February 28 in each year, a sworn statement of a senior officer of Licensor, or a certificate of the auditors of Licensor, confirming that, during the immediately preceding calendar year, Licensor did not enter into such an agreement or series of agreements or, if it did enter into such agreement(s), confirming the effective date thereof and identifying the terms contained therein that are more favourable than those contained in this Agreement.","Issue: The issue is whether the Most Favored Nation (MFN) clause ensures that Rogers receives the most favorable terms compared to other parties.
+
+Rule: The MFN clause is designed to ensure that the party receiving the most favorable terms under the contract is also the most favored nation. It requires the Licensor to disclose any more favorable terms offered to other parties.
+
+Application: The clause requires the Licensor to provide a sworn statement or certificate from a senior officer or auditors confirming that no more favorable terms were offered to other parties. This ensures that Rogers receives the most favorable terms compared to other parties.
+
+Conclusion: Therefore, the clause effectively implements the MFN principle by requiring the Licensor to disclose any more favorable terms, ensuring Rogers receives the best terms available.",1.0,4,3,3,The analysis is generally grounded in the clause text but misinterprets the purpose of the MFN clause. The reasoning quality is moderate as it correctly identifies the clause's requirement but incorrectly concludes that it ensures Rogers receives the most favorable terms. The overall score is moderate due to the misinterpretation of the clause's intent.,0.5,,
+dpo_from_base,SLINGERBAGINC_05_27_2020-EX-10.7-CONSULTING AGREEMENT__Termination For Convenience_1,random,Termination For Convenience,The Company may terminate Consultant's engagement at any time by giving Consultant 60 days prior written Notice of the termination.," Issue: Does the clause provide for a reasonable notice period for the termination of the consultant's engagement?
+
+ Rule: In contract law, the notice period for termination of a consultancy agreement should be reasonable and not unduly harsh.
+
+ Application: The clause specifies that the Company can terminate the consultant's engagement by providing 60 days' written notice. This notice period is generally considered reasonable as it allows sufficient time for the consultant to prepare for the termination and to seek alternative engagements.
+
+ Conclusion: The notice period of 60 days is appropriate and does not constitute an unreasonable term for the termination of the consultant's engagement.",1.0,5,5,5,"The analysis is faithful to the clause text, applies the relevant legal principle correctly, and reaches a logical conclusion. There are no invented facts or conditions, and the reasoning is coherent and well-structured.",0.0,,
+sft_lora_fp,InnerscopeHearingTechnologiesInc_20181109_8-K_EX-10.6_11419704_EX-10.6_Distributor Agreement__License Grant_3,rubric_judge_disagreement,License Grant,Distributor shall not sell or export the Products outside the United States without prior written consent of Erchonia.,"Issue: The scope and enforceability of a distributor's obligation to obtain prior written consent for selling or exporting products outside the United States.
+
+Rule: In contract law, a party's obligation to obtain prior written consent for certain actions is a common contractual term that ensures compliance with specific business practices or regulatory requirements. Such terms are generally enforceable as long as they are clear, unambiguous, and do not violate public policy.
+
+Application: The clause requires the Distributor to obtain prior written consent from Erchonia before selling or exporting the Products outside the United States. This condition is clearly stated and does not appear to be ambiguous. It is a standard business practice to ensure that all sales and exports comply with local regulations and market conditions, which is a reasonable requirement for both parties.
+
+Conclusion: The clause is enforceable as it sets a clear and unambiguous obligation for the Distributor to seek Erchonia's consent before engaging in international sales or exports of the Products.",0.725,5,5,5,"The analysis is faithful to the clause text and does not invent any conditions or requirements. The legal reasoning is coherent, well-structured, and directly applies the relevant legal principles to the clause. The conclusion logically follows from the analysis.",0.275,,
+dpo_from_sft,AMERICANPHYSICIANSCAPITALINC_03_31_2003-EX-10.26-AGENCY AGREEMENT__No-Solicit Of Customers_0,rubric_judge_disagreement,No-Solicit Of Customers,"In return for this payment, for a two-year period following                   the termination date, Agency will not directly or indirectly                   sell any professional liability insurance to any individuals                   or entities who were MICOA insureds in Nevada at the time of                   termination of this Agreement.","Issue: The scope and enforceability of a no-solicit of customers clause in a contract.
+
+Rule: No-solicit clauses are generally enforceable to protect a company's customer base from being poached by former employees or contractors. Such clauses must be reasonable in duration and scope to be valid.
+
+Application: The clause restricts the Agency from selling professional liability insurance to MICOA insureds in Nevada for two years post-termination. This restriction is specific to the insurance industry and is limited to the region of Nevada, indicating a reasonable scope. The duration of two years is also a reasonable term for such a restriction.
+
+Conclusion: The clause is likely enforceable as it is specific, regional, and limited in duration, aligning with general principles of no-solicit clauses.",1.0,4,4,4,"The analysis is generally faithful to the clause text but makes some assumptions about the scope that are not explicitly stated. The reasoning is coherent and logically follows the clause, but it could be more precise in its application of the no-solicit principle.",0.25,,
+baseline,CardlyticsInc_20180112_S-1_EX-10.16_11002987_EX-10.16_Maintenance Agreement1__License Grant_5,random,License Grant,"The licenses set forth above shall include the right to install, use, execute and copy the Source Code for test and development purposes.","Issue: Does the clause adequately cover the rights granted for testing and development of the software?
+
+Rule: To determine if a license clause adequately covers testing and development rights, courts generally examine whether the clause explicitly grants such rights and specifies the scope of those rights.
+
+Application: 
+- The clause states that the licenses include ""the right to install, use, execute and copy the Source Code for test and development purposes.""
+- This language is clear and unambiguous, indicating that the parties have agreed to allow the licensee to engage in testing and development activities.
+- The clause specifies that these rights pertain specifically to the ""Source Code,"" which is the underlying code of the software.
+- The scope of these rights is limited to ""test and development purposes,"" which is a reasonable and specific limitation that does not overly restrict the licensee's ability to utilize the software for testing and development.
+
+Conclusion: The clause adequately covers the rights granted for testing and development of the software as it explicitly states the rights and provides a clear scope for their application. The inclusion of ""test and development purposes"" ensures that the rights are not unlimited but are instead tailored to the intended use of the software during the testing and development phases.",0.833,5,5,5,"The analysis is faithful to the clause text, applying the rule correctly, and the conclusion logically follows. There are no invented facts or conditions, and the reasoning is coherent and legally sound.",0.167,,
+baseline,SPORTHALEYINC_09_29_1997-EX-10.2-10-ENDORSEMENT AGREEMENT__Exclusivity_0,random,Exclusivity,"The Professional agrees that, with respect to men's apparel,          he will exclusively endorse and use exclusively in play, practice,           exhibits, clinics and other events open to the media or public, Haley           brand apparel which shall consist of shirts, vests, jackets, sweaters,          pants and shorts (if permitted by applicable rules).","Issue: Does the clause establish an exclusive endorsement agreement for men's apparel?
+
+Rule: An exclusive endorsement agreement is one where the party agrees to promote only one product or brand within specified contexts. If the clause specifies that the Professional will exclusively endorse and use Haley brand apparel in certain activities, it constitutes an exclusive endorsement agreement.
+
+Application: 
+- The clause specifies that the Professional will ""exclusively endorse and use exclusively"" Haley brand apparel in various contexts such as plays, practices, exhibits, clinics, and events open to the media or public.
+- The clause defines the scope of the exclusivity to include shirts, vests, jackets, sweaters, pants, and shorts.
+- The clause does not mention any other brands or products being endorsed or used in these specified contexts.
+
+Conclusion: Yes, the clause establishes an exclusive endorsement agreement for men's apparel. The Professional is bound to exclusively endorse and use Haley brand apparel in the specified contexts, thereby limiting their promotional activities to this particular brand.",1.0,5,5,5,"The analysis is faithful to the clause text, applies the relevant legal principle correctly, and reaches a logical conclusion. There are no invented facts or conditions, and the reasoning is coherent and well-structured.",0.0,,
+sft_lora_fp,AMERICANPHYSICIANSCAPITALINC_03_31_2003-EX-10.26-AGENCY AGREEMENT__Non-Compete_1,low_judge_score,Non-Compete,In return for the exclusive appointment of Agency by MICOA to                   sell its professional liability products listed on the,"Issue: The scope and enforceability of a non-compete clause in a contract.
+
+Rule: Non-compete clauses are generally enforceable if they are reasonable in scope and duration, do not unduly restrict the employee's ability to earn a living, and are narrowly tailored to protect legitimate business interests.
+
+Application: The clause requires the Agency to exclusively sell MICOA's professional liability products. This exclusivity is limited to the sale of these specific products, which suggests a narrow scope. However, the clause does not specify the duration of this exclusivity, which could be a limitation on its enforceability.
+
+Conclusion: The clause appears to be a non-compete provision that restricts the Agency from selling MICOA's professional liability products, but it lacks clarity regarding the duration of this restriction, which may affect its enforceability.",1.0,3,3,3,The analysis is somewhat faithful to the clause text but makes assumptions about its enforceability without clear support. The reasoning is generally coherent but lacks a clear connection to the non-compete aspect of the clause.,0.5,,
+dpo_from_sft,TRUENORTHENERGYCORP_02_08_2007-EX-10.1-DEVELOPMENT AGREEMENT__Rofr/Rofo/Rofn_0,random,Rofr/Rofo/Rofn,"BP shall then have an optional prior right, for a period of fifteen (15) days after receipt of such written notice, to purchase for the stated consideration on the same terms and conditions the interest which Company proposes to sell.","Issue: The issue is whether the clause grants BP an option to purchase the Company's proposed sale of an interest at a specified price and under similar terms.
+
+Rule: In contract law, an option to purchase is a contractual provision that allows one party to purchase a specific asset from another party within a defined time frame, subject to certain conditions.
+
+Application: The clause provides BP with an optional right to purchase the Company's proposed sale of an interest. This right is conditional upon BP receiving a written notice and is valid for a period of fifteen days. The purchase must be made at the stated consideration and under the same terms as the proposed sale.
+
+Conclusion: Therefore, BP has the option to purchase the Company's proposed sale of an interest if it receives a written notice within the specified period and agrees to the terms and conditions set forth.",1.0,5,5,5,"The analysis is faithful to the clause text and does not invent any conditions or requirements. The legal reasoning is coherent, well-structured, and directly applies the relevant contract law principle to the clause. The conclusion logically follows from the application of the rule to the clause.",0.0,,
+dpo_from_base,AMERICASSHOPPINGMALLINC_12_10_1999-EX-10.2-SITE DEVELOPMENT AND HOSTING AGREEMENT__License Grant_0,rubric_judge_disagreement,License Grant,"The Company hereby grants to HDI a non-exclusive, limited, non-transferable license to use the Company's ""Deerskin"" trademarks, service
+
+
+
+
+
+marks, and logos (collectively, ""Marks"") solely for the purpose of carrying out its obligations under this Agreement."," Issue: Definition of the license grant and its exclusivity nature.
+
+ Rule: A non-exclusive license allows the licensee to use the licensed property without interference from the licensor, but the licensor retains the right to use it themselves.
+
+ Application: The clause grants HDI a non-exclusive license to use the Company's Marks for the purpose of fulfilling its obligations under the Agreement. This means HDI can use the Marks without the Company interfering, but the Company can still use the Marks if they choose to do so.
+
+ Conclusion: HDI is granted a non-exclusive license to use the Marks, allowing them to carry out their contractual duties without restriction, while the Company retains the right to use the Marks for itself.",1.0,4,4,4,"The analysis is generally faithful to the clause text and the legal reasoning is coherent. However, the analysis could be more precise in its description of the non-exclusive nature of the license, which is not explicitly stated in the clause. The overall score reflects that the analysis is useful but could be improved.",0.25,,
+dpo_from_sft,REGANHOLDINGCORP_03_31_2008-EX-10-LICENSE AND HOSTING AGREEMENT__Irrevocable Or Perpetual License_1,low_judge_score,Irrevocable Or Perpetual License,"LMG will maintain, through the Conversion Date or such other date as is specified in Exhibit A, its existing licenses for the Other Third Party Software and provide TAG access to and an irrevocable ""look access only"" right and license to use the Other Third Party Software and applicable Documentation.","Issue: The nature and scope of the irrevocable license provided to TAG under the contract.
+
+Rule: An irrevocable license grants a party the right to use a licensed product without the ability to revoke that right, subject to certain conditions or limitations.
+
+Application: The clause provides LMG with an irrevocable ""look access only"" right to use the Other Third Party Software and applicable Documentation. This means that LMG cannot revoke this right, but it can still access the software and documentation without making any changes or modifications.
+
+Conclusion: The clause ensures that LMG retains the ability to access the Other Third Party Software and Documentation without the possibility of revocation, while granting TAG a limited right to access these resources.",1.0,4,3,3,"The analysis is generally faithful to the clause text but misinterprets the ""look access only"" right as a non-revocable right, which is not explicitly stated. The reasoning quality is moderate as it correctly identifies the nature of an irrevocable license but incorrectly applies it to the ""look access only"" right. The overall score is moderate due to the misinterpretation and the lack of clarity in the application of the irrevocable license concept.",0.5,,
+sft_qlora,REGANHOLDINGCORP_03_31_2008-EX-10-LICENSE AND HOSTING AGREEMENT__Insurance_1,random,Insurance,"During the Term of the Agreement, LMG shall maintain and keep in force, at its own expense, the following minimum insurance coverages and minimum limits:
+
+workers' compensation insurance, with statutory limits as required by the various laws and regulations applicable to the employees of LMG;
+
+employer's liability insurance, for employee bodily injuries and deaths, with a limit of $500,000 each accident;
+
+commercial general liability insurance, covering claims for bodily injury, death and property damage, including premises and operations, LMG's vicarious liability for acts of independent contractors, products, services and completed operations (as applicable to the Services), personal injury, contractual, and broad-form property damage liability coverages, with combined single limit of $1,000,000 per occurrence, and a general aggregate limit of $2,000,000, for bodily injury, death and property damage;
+
+commercial automobile liability insurance, covering owned, non-owned and hired vehicles, with combined single limit of $1,000,000 per occurrence;
+
+umbrella liability insurance, with a minimum limit of $5,000,000 per occurrence and $5,000,000 in the aggregate;
+
+special form property insurance, on a replacement cost basis, covering the real and personal property of LMG which LMG is obligated to insure by the Agreement; such real and personal property may include equipment, furniture, fixtures and supply inventory; and
+
+employee dishonesty insurance covering dishonest acts of employees; such insurance shall include a Joint Loss Endorsement in favor of TAG and be written for limits not less than $500,000.","Issue: The scope and requirements of insurance coverage under the contract.
+
+Rule: Contracts often require parties to maintain specific insurance coverage to protect against potential liabilities. The insurance must meet certain minimum limits and coverages as specified in the contract.
+
+Application: LMG is required to maintain workers' compensation, employer's liability, commercial general liability, commercial automobile liability, umbrella liability, and special form property insurance. These policies must cover bodily injury, death, and property damage, as well as specific exclusions like those for independent contractors and products. The insurance must also include employee dishonesty coverage with a minimum limit of $500,000.
+
+Conclusion: LMG must ensure that all required insurance policies are maintained and meet the specified limits and exclusions to comply with the contract terms.",1.0,5,5,5,"The analysis is faithful to the clause text and does not invent any requirements or conditions. The legal reasoning is coherent, well-structured, and directly applies the relevant legal principle to the clause. The conclusion logically follows from the application of the rule to the clause.",0.0,,
+sft_lora_fp,AMERICASSHOPPINGMALLINC_12_10_1999-EX-10.2-SITE DEVELOPMENT AND HOSTING AGREEMENT__License Grant_0,rubric_judge_disagreement,License Grant,"The Company hereby grants to HDI a non-exclusive, limited, non-transferable license to use the Company's ""Deerskin"" trademarks, service
+
+
+
+
+
+marks, and logos (collectively, ""Marks"") solely for the purpose of carrying out its obligations under this Agreement.","Issue: Nature of the License Grant
+
+Rule: A license grant in a contract typically conveys a right to use certain intellectual property for a specific purpose, subject to the terms and conditions outlined in the agreement.
+
+Application: The clause grants HDI a non-exclusive, limited, and non-transferable license to use the Company's Marks for the sole purpose of fulfilling its obligations under the Agreement. This means HDI can use the Marks but cannot transfer this right to another party and must use them only as required by the Agreement.
+
+Conclusion: HDI has a restricted right to use the Marks, but this right is not exclusive and is tied to the performance of its contractual duties.",1.0,4,4,4,"The analysis is generally faithful to the clause text but could be more precise. The reasoning is coherent and logically sound, but it could be more explicit about the non-transferability aspect. The overall score reflects that the analysis is useful and correct, though there is room for minor improvements.",0.25,,
+dpo_from_base,TELKOMSALTD_01_30_2003-EX-10-LICENCE AND MAINTENANCE AGREEMENT__Insurance_0,low_judge_score,Insurance,Motor Vehicle Liability Insurance in respect of all motor vehicles brought onto the   premises of TELKOM.," Issue: Who is required to provide Motor Vehicle Liability Insurance for the motor vehicles brought onto TELKOM's premises?
+
+ Rule: Liability insurance requirements are typically imposed on parties that have control or access to the insured property.
+
+ Application: TELKOM has the premises and controls access to it, making it responsible for ensuring that all motor vehicles brought onto the premises are covered by Motor Vehicle Liability Insurance.
+
+ Conclusion: TELKOM must provide Motor Vehicle Liability Insurance for all motor vehicles brought onto its premises.",1.0,3,4,3,"The analysis is somewhat grounded in the clause but makes assumptions not explicitly stated. The reasoning is coherent but could be more precise in its application to the clause. The overall score reflects that while the analysis is useful, it could be more strictly aligned with the clause text.",0.5,,
+dpo_from_base,BIOFRONTERAAG_04_29_2019-EX-4.17-SUPPLY AGREEMENT__Audit Rights_1,random,Audit Rights,Such inspection shall be undertaken by an independent public accountant or accounting firm appointed by the requesting party and about whom the other party does not express a legitimate concern.," Issue: Who is responsible for appointing the independent public accountant or accounting firm for the audit?
+
+ Rule: The appointment of the independent public accountant or accounting firm is typically made by the party requesting the audit, subject to the other party's reasonable concerns.
+
+ Application: In this clause, the requesting party is responsible for appointing the independent public accountant or accounting firm. However, the other party has the right to express legitimate concerns about the chosen accountant or firm, which could affect the appointment process.
+
+ Conclusion: Therefore, the requesting party must appoint the independent public accountant or accounting firm but must ensure that their choice does not raise legitimate concerns from the other party.",1.0,5,5,5,The analysis is faithful to the clause text and does not introduce any unsupported assumptions. The reasoning is coherent and directly applies the clause to the legal context. This analysis would be very useful and correct for a lawyer reviewing this clause.,0.0,,
+dpo_from_sft,"ASHWORTHINC_01_29_1999-EX-10.(D)-PROMOTION AGREEMENT AND NANTZ COMMUNICATIONS, INC.__Most Favored Nation_0",low_judge_score,Most Favored Nation,The Company acknowledges that Nantz Communications' and      Nantz's obligations to CBS or any other television station or network with      which Nantz Communications or Nantz has a contract or arrangement shall      take precedence over any other commitments of Nantz Communications or Nantz      under this Agreement.,"Issue: The issue is whether the Most Favored Nation (MFN) clause ensures that Nantz Communications and Nantz receive the most favorable treatment compared to other commitments under the agreement.
+
+Rule: The MFN clause is a contractual provision that ensures that the party receiving the most favorable treatment under the agreement will also receive the most favorable treatment for any future agreements or arrangements with third parties.
+
+Application: The clause states that Nantz Communications and Nantz's obligations to CBS or any other television station or network with which they have a contract or arrangement shall take precedence over any other commitments of Nantz Communications or Nantz under this Agreement. This means that if Nantz Communications or Nantz have a more favorable obligation with CBS or another television station or network, it will override any commitments under this Agreement.
+
+Conclusion: Therefore, the MFN clause ensures that Nantz Communications and Nantz will receive the most favorable treatment when dealing with CBS or other television stations or networks, as long as those obligations are more favorable than any commitments under this Agreement.",1.0,3,3,3,The analysis is somewhat grounded in the clause text but misinterprets the MFN concept. The reasoning quality is poor as it incorrectly applies the MFN principle and does not accurately reflect the clause's intent.,0.5,,
+sft_lora_fp,ADAMSGOLFINC_03_21_2005-EX-10.17-ENDORSEMENT AGREEMENT__Exclusivity_1,low_judge_score,Exclusivity,"During the term of this Agreement, CONSULTANT shall exclusively play/use the MANDATORY PRODUCT.","Issue: The exclusivity clause restricts the Consultant's ability to use or play the Mandatory Product during the agreement term.
+
+Rule: In contract law, an exclusivity clause typically grants one party the exclusive right to perform a specific action, thereby preventing the other party from engaging in that action. This ensures that the party receiving the exclusivity has a monopoly on the activity for the duration of the agreement.
+
+Application: The clause states that the Consultant shall exclusively play or use the Mandatory Product. This means that the Consultant is prohibited from using or playing any other product during the term of the agreement, and must rely solely on the Mandatory Product for all related activities.
+
+Conclusion: Therefore, the Consultant is bound to use only the Mandatory Product as specified in the agreement, without any alternative options available to them.",1.0,4,4,4,"The analysis is generally faithful to the clause text but could be more precise. The reasoning is coherent and legally sound, but it could be more explicit about the exclusivity aspect.",0.25,,
+sft_qlora,AMERICASSHOPPINGMALLINC_12_10_1999-EX-10.2-SITE DEVELOPMENT AND HOSTING AGREEMENT__Renewal Term_0,random,Renewal Term,"This Agreement shall be automatically renewed for an additional one year period on each anniversary of the Effective Date, unless terminated by either Party hereto upon ninety (90) days written notice to the other.","Issue: Automatic Renewal Clause Analysis
+
+Rule: Automatic renewal clauses are common in contracts and are generally enforceable as long as they are clearly stated and do not violate public policy or contain unconscionable terms.
+
+Application: The clause states that the agreement will automatically renew for an additional one-year period on each anniversary of the Effective Date, unless terminated by either party through 90 days' written notice. This aligns with standard automatic renewal provisions, ensuring clarity and predictability for both parties.
+
+Conclusion: The clause is valid and enforceable under general contract law principles, provided it does not contravene any applicable statutes or public policies.",1.0,5,5,5,"The analysis is faithful to the clause text, applies the relevant legal principle correctly, and reaches a logical conclusion. There are no invented facts or conditions, and the reasoning is coherent and well-structured.",0.0,,
+sft_qlora,ADAMSGOLFINC_03_21_2005-EX-10.17-ENDORSEMENT AGREEMENT__Exclusivity_1,low_judge_score,Exclusivity,"During the term of this Agreement, CONSULTANT shall exclusively play/use the MANDATORY PRODUCT.","Issue: The exclusivity clause restricts the Consultant's ability to use or play the Mandatory Product during the agreement term.
+
+Rule: In contract law, an exclusivity clause typically limits the other party's ability to perform a specific action, ensuring that the exclusive party has the sole right to do so. This ensures that the exclusive party is the only one who can perform the action as agreed upon.
+
+Application: The clause states that CONSULTANT shall exclusively play/use the MANDATORY PRODUCT. This means that CONSULTANT is the only party permitted to use or play the MANDATORY PRODUCT during the term of the agreement. Any other party attempting to use or play the MANDATORY PRODUCT would be in violation of the contract terms.
+
+Conclusion: Therefore, the clause effectively grants CONSULTANT the exclusive right to use or play the MANDATORY PRODUCT during the agreement term, preventing any other party from doing so without explicit permission.",1.0,4,4,4,"The analysis is generally faithful to the clause text and the reasoning is coherent and legally sound. However, the score is not a perfect 5 because the clause does not explicitly state that other parties are restricted from using the product, which is a key implication in the conclusion.",0.25,,
+dpo_from_sft,AMERICASSHOPPINGMALLINC_12_10_1999-EX-10.2-SITE DEVELOPMENT AND HOSTING AGREEMENT__Liquidated Damages_0,rubric_judge_disagreement,Liquidated Damages,"In the event the Company terminates this Agreement, the Company shall pay to HDI a termination payment, (the ""Termination Payment"") the amount of which shall be an amount equal to the aggregate Net Sales for the twelve (12) months preceding the Termination Date less $800,000, the balance of which shall be divided by two.","Issue: The issue is whether the liquidated damages clause is valid and enforceable under contract law.
+
+Rule: Under contract law, liquidated damages clauses are generally enforceable if they are a reasonable estimate of the loss at the time of contract formation and do not exceed a reasonable percentage of the potential loss.
+
+Application: The clause requires the Company to pay a termination payment equal to the aggregate Net Sales for the twelve months preceding the Termination Date minus $800,000, divided by two. This calculation seems to be a reasonable estimate of potential loss, as it takes into account the company's financial performance over a specific period. However, the clause does not specify a maximum limit on the termination payment, which could be seen as a potential issue if it exceeds a reasonable percentage of the potential loss.
+
+Conclusion: The clause appears to be a valid liquidated damages provision, provided that the termination payment does not exceed a reasonable percentage of the potential loss. If the payment exceeds this reasonable limit, the clause may be deemed unenforceable.",1.0,4,4,4,"The analysis is generally faithful to the clause text but could be more precise. The reasoning is coherent and legally sound but could benefit from a clearer connection to the specific terms of the clause. The overall score reflects that the analysis is useful and correct, but there is room for improvement in precision and clarity.",0.25,,
+sft_qlora,AMERICASSHOPPINGMALLINC_12_10_1999-EX-10.2-SITE DEVELOPMENT AND HOSTING AGREEMENT__License Grant_0,rubric_judge_disagreement,License Grant,"The Company hereby grants to HDI a non-exclusive, limited, non-transferable license to use the Company's ""Deerskin"" trademarks, service
+
+
+
+
+
+marks, and logos (collectively, ""Marks"") solely for the purpose of carrying out its obligations under this Agreement.","Issue: Nature of the License Grant
+
+Rule: A license grant in a contract typically conveys a right to use certain intellectual property for a specific purpose, subject to limitations such as exclusivity, duration, and scope.
+
+Application: The clause grants HDI a non-exclusive, limited, and non-transferable license to use the Company's Marks for the sole purpose of fulfilling its obligations under the agreement. This means HDI can use the Marks but cannot transfer this right to another party and cannot grant similar rights to others.
+
+Conclusion: HDI has a restricted right to use the Marks for the agreed-upon purposes, but this right is not exclusive and cannot be transferred.",1.0,4,4,4,"The analysis is generally faithful to the clause text but could be more precise. The reasoning is coherent and logically sound, but it could be more explicit about the non-transferability aspect. The overall score reflects that the analysis is useful and correct, though not perfect.",0.25,,
+dpo_from_sft,AMERICASSHOPPINGMALLINC_12_10_1999-EX-10.2-SITE DEVELOPMENT AND HOSTING AGREEMENT__License Grant_0,rubric_judge_disagreement,License Grant,"The Company hereby grants to HDI a non-exclusive, limited, non-transferable license to use the Company's ""Deerskin"" trademarks, service
+
+
+
+
+
+marks, and logos (collectively, ""Marks"") solely for the purpose of carrying out its obligations under this Agreement.","Issue: Nature of the License Grant
+
+Rule: A license grant in a contract typically specifies the rights and limitations of the licensee to use the licensed material.
+
+Application: The clause grants HDI a non-exclusive, limited, and non-transferable license to use the Company's Marks. This means HDI can use the Marks but cannot transfer this right to another party, and the Company retains the ability to grant similar licenses to others.
+
+Conclusion: HDI is permitted to use the Marks for the purposes outlined in the agreement but does not have the right to assign or transfer this license to another entity.",1.0,4,4,4,"The analysis is generally faithful to the clause text but could be more precise. The reasoning is coherent and logically sound, but it could be more explicit about the non-exclusive nature of the license. The overall score reflects that the analysis is useful and correct, but there is room for refinement.",0.25,,
+sft_qlora,MOELIS_CO_03_24_2014-EX-10.19-STRATEGIC ALLIANCE AGREEMENT__Rofr/Rofo/Rofn_11,random,Rofr/Rofo/Rofn,"Prior to the IPO and during the term of the Strategic Alliance, SMBC shall have the right of first refusal to purchase all (but not less than all) Additional Units that Moelis Holdings proposes to issue to an SMBC Competitor, including (x) in a proposed issuance that is excepted from Section 3.4.2 of the Moelis Holdings Agreement as an issuance to a Strategic Investor, and (y) in a proposed issuance that is subject to Section 3.4.2 of the Moelis Holdings Agreement, to the extent that the Partners do not exercise in full their right of first refusal thereunder.","Issue: The scope and conditions of SMBC's right of first refusal under the Strategic Alliance.
+
+Rule: A right of first refusal (RoF) is a contractual provision that grants a party the exclusive right to purchase additional units of securities issued by another party, provided they meet certain conditions. This right is typically exercised when the other party proposes to sell those securities to a third party.
+
+Application: SMBC has a RoF to purchase Additional Units that Moelis Holdings proposes to issue to an SMBC Competitor. This RoF applies both to issuances that are exempt from Section 3.4.2 of the Moelis Holdings Agreement and to those that are subject to it. SMBC must exercise this right if the Partners do not do so in full.
+
+Conclusion: SMBC retains the option to purchase these Additional Units, but only if it meets the conditions set forth in the agreement and if the Partners do not exercise their own rights of first refusal.",1.0,5,5,5,"The analysis is faithful to the clause text and does not invent any conditions or requirements. The legal reasoning is coherent, well-structured, and directly applies the relevant legal principle to the clause. The conclusion logically follows from the application of the rule to the clause.",0.0,,
+dpo_from_sft,ADAMSGOLFINC_03_21_2005-EX-10.17-ENDORSEMENT AGREEMENT__Non-Compete_0,rubric_judge_disagreement,Non-Compete,"When endorsing a non-competitive product, under no circumstances shall CONSULTANT wear, play, use, hold or in any way be associated with an ADAMS GOLF competitor's Product.","Issue: The issue is whether the clause restricts the Consultant from associating with competitors' products through personal association.
+
+Rule: The rule in contract law regarding non-compete clauses generally prohibits the restriction of a party's ability to engage in competitive activities unless it is necessary to protect legitimate business interests.
+
+Application: The clause restricts the Consultant from wearing, playing, using, holding, or being associated with an ADAMS GOLF competitor's product. This restriction is specific to the Consultant's personal association and does not extend to the Consultant's business activities or employment with the company.
+
+Conclusion: The clause effectively limits the Consultant's personal association with ADAMS GOLF competitor products but does not prevent the Consultant from engaging in competitive activities through other means.",1.0,4,4,4,The analysis is generally faithful to the clause text but could be more precise. The reasoning is coherent and legally sound but could be more explicitly connected to the specific wording of the clause.,0.25,,
+baseline,"ASHWORTHINC_01_29_1999-EX-10.(D)-PROMOTION AGREEMENT AND NANTZ COMMUNICATIONS, INC.__Most Favored Nation_0",low_judge_score,Most Favored Nation,The Company acknowledges that Nantz Communications' and      Nantz's obligations to CBS or any other television station or network with      which Nantz Communications or Nantz has a contract or arrangement shall      take precedence over any other commitments of Nantz Communications or Nantz      under this Agreement.,"Issue: Does the clause establish a Most Favored Nation (MFN) obligation?
+
+Rule: A Most Favored Nation clause obligates a party to treat all counterparties equally, ensuring that no other party receives more favorable terms than the one specifically mentioned in the clause.
+
+Application: 
+- The clause specifies that Nantz Communications' and Nantz's obligations to CBS or any other television station or network with which they have a contract or arrangement shall take precedence over any other commitments of Nantz Communications or Nantz under this Agreement.
+- This language indicates that Nantz Communications and Nantz must offer the same terms to CBS as they do to any other television station or network with which they have a separate agreement.
+- Therefore, it can be inferred that Nantz Communications and Nantz are required to provide CBS with the most favorable terms available to them for any other agreements they may have with other television stations or networks.
+
+Conclusion: Yes, the clause establishes a Most Favored Nation obligation. The clause requires Nantz Communications and Nantz to ensure that their obligations to CBS are at least as favorable as those offered to any other television station or network with which they have a separate agreement. To comply with this clause, Nantz Communications and Nantz must offer CBS the best terms available to them for any other contracts they may have with other television stations or networks. 1: Issue: Does the clause establish a Most Favored Nation (MFN) obligation?
+2: Rule: A Most Favored Nation clause obligates a party to treat all counterparties equally, ensuring that no other party receives more favorable terms than the one specifically mentioned in the clause.
+3: Application: 
+- The clause specifies that Nantz Communications' and Nantz's obligations to",1.0,2,2,2,"The analysis is not grounded in the actual clause text, as it interprets the clause as an MFN obligation, which it is not. The clause actually prioritizes obligations to certain television stations or networks over others, not ensuring equal treatment of all counterparties. The reasoning quality is low because the rule and application do not correctly interpret the clause's intent.",0.75,,
+dpo_from_sft,AMERICANPHYSICIANSCAPITALINC_03_31_2003-EX-10.26-AGENCY AGREEMENT__Non-Compete_1,rubric_judge_disagreement,Non-Compete,In return for the exclusive appointment of Agency by MICOA to                   sell its professional liability products listed on the,"Issue: The issue is whether the non-compete clause is appropriately defined within the context of the contract.
+
+Rule: Non-compete clauses are generally used to prevent a former employee from competing with the employer in a specific geographic area or industry for a certain period of time.
+
+Application: The clause mentions an exclusive appointment by MICOA to sell professional liability products, which suggests a specific industry and product range. However, the clause does not specify the geographic area or the duration of the non-compete restriction, which are crucial elements for a valid non-compete agreement.
+
+Conclusion: The clause lacks essential details necessary for a clear and enforceable non-compete agreement, such as the geographic scope and the duration of the restriction.",1.0,4,4,4,"The analysis is generally faithful to the clause text but could be more precise. The reasoning is coherent and relevant, but it could be more detailed in explaining why the geographic scope and duration are crucial. The overall score reflects that the analysis is useful and correct, but there is room for improvement in precision and detail.",0.25,,
+baseline,ADAMSGOLFINC_03_21_2005-EX-10.17-ENDORSEMENT AGREEMENT__Non-Compete_0,rubric_judge_disagreement,Non-Compete,"When endorsing a non-competitive product, under no circumstances shall CONSULTANT wear, play, use, hold or in any way be associated with an ADAMS GOLF competitor's Product.","Issue: Does the clause adequately define what constitutes a ""competitor's Product"" for the purposes of the non-compete agreement?
+
+Rule: The scope of a non-compete clause must be clearly defined to avoid ambiguity and ensure enforceability.
+
+Application: 
+The clause specifies that CONSULTANT is prohibited from wearing, playing, using, holding, or being associated with an ADAMS GOLF competitor's Product when endorsing a non-competitive product. However, it does not explicitly define what constitutes an ""ADAMS GOLF competitor's Product."" This lack of clarity could lead to disputes over whether certain products fall within the prohibited category. For instance, if a product is similar but not identical to ADAMS GOLF's offerings, it might still be considered a competitor's Product under the broad interpretation of the clause. Additionally, the clause does not specify how closely related a product needs to be to be deemed a competitor's Product. Without a clear definition, there is potential for the clause to be overly restrictive or too lenient, depending on the specific circumstances.
+
+Conclusion: The clause fails to provide a clear and precise definition of what constitutes a ""competitor's Product,"" which is essential for ensuring the enforceability and clarity of the non-compete agreement. To address this issue, the clause should be amended to include a more detailed description of the types of products that would be considered competitors, as well as criteria for determining the level of similarity required to classify a product as such. This would help prevent future disputes and ensure that the non-compete provision operates as intended.",1.0,4,4,4,"The analysis is generally faithful to the clause text but makes a reasonable assumption about the lack of definition for ""competitor's Product."" The reasoning is coherent and logically follows the clause, but it could be slightly more detailed in its application of the rule. The overall score reflects that the analysis is useful and correct, though not perfect.",0.25,,
+sft_lora_fp,"ASHWORTHINC_01_29_1999-EX-10.(D)-PROMOTION AGREEMENT AND NANTZ COMMUNICATIONS, INC.__Most Favored Nation_0",low_judge_score,Most Favored Nation,The Company acknowledges that Nantz Communications' and      Nantz's obligations to CBS or any other television station or network with      which Nantz Communications or Nantz has a contract or arrangement shall      take precedence over any other commitments of Nantz Communications or Nantz      under this Agreement.,"Issue: The scope and effect of a Most Favored Nation (MFN) clause in a contract.
+
+Rule: An MFN clause typically obligates the party receiving the benefit to treat all parties equally, ensuring no party receives more favorable terms than another. This ensures fairness and prevents one party from gaining an unfair advantage over others.
+
+Application: The clause in question requires Nantz Communications and Nantz to prioritize their obligations to CBS or any other television station or network with which they have a contract or arrangement over any other commitments under this Agreement. This means that if Nantz Communications or Nantz is asked to provide services to CBS or another station/network, they must do so before fulfilling any other commitments under the agreement.
+
+Conclusion: Therefore, the clause ensures that Nantz Communications and Nantz are not required to prioritize any other commitments over their obligations to CBS or other stations/networks, thereby maintaining fairness and equality among the parties involved.",1.0,3,4,3,The analysis is somewhat grounded in the clause text but misinterprets the nature of the MFN clause. The reasoning quality is good but the overall score is lower due to the misinterpretation of the clause's intent and the inaccuracy in stating that the clause requires prioritization over other commitments.,0.5,,
+dpo_from_base,"ASHWORTHINC_01_29_1999-EX-10.(D)-PROMOTION AGREEMENT AND NANTZ COMMUNICATIONS, INC.__Competitive Restriction Exception_0",low_judge_score,Competitive Restriction Exception,Notwithstanding the foregoing Nantz shall be permitted to wear a Lynx hat or clothing logo when performing promotional services for Lynx and to use Lynx equipment when performing any promotional services for the Company in which equipment will be used.," Issue: Does the clause impose a competitive restriction on Nantz's ability to perform promotional services for Lynx?
+
+ Rule: Competitive restrictions are typically imposed to prevent direct competition between parties involved in a contract.
+
+ Application: The clause allows Nantz to wear a Lynx hat or use Lynx equipment while performing promotional services for Lynx, which could potentially create a competitive advantage for Lynx. However, since the clause does not explicitly state that Nantz cannot compete directly with Lynx, it is assumed that there is an exception to the general competitive restriction.
+
+ Conclusion: The clause does not impose a full competitive restriction on Nantz's promotional activities for Lynx, but rather provides an exception allowing Nantz to use Lynx's equipment and branding materials. 
+Issue: Does the clause impose a competitive restriction on Nantz's ability to perform promotional services for Lynx?
+Rule: Competitive restrictions are typically imposed to prevent direct competition between parties involved in a contract.
+Application: The clause allows Nantz to wear a Lynx hat or use Lynx equipment while performing promotional services for Lynx, which could potentially create a competitive advantage for Lynx. However, since the clause does not explicitly state that Nantz cannot compete directly with Lynx, it is assumed that there is an exception to the general competitive restriction.
+Conclusion: The clause does not impose a full competitive restriction on Nantz's promotional activities for Lynx, but rather provides an exception allowing Nantz to use Lynx's equipment and branding materials. 
+Issue: Does the clause impose a competitive restriction on Nantz's ability to perform promotional services for Lynx?
+Rule: Competitive restrictions are typically imposed to prevent direct competition between parties involved in a contract.
+Application: The clause allows Nantz to wear a",1.0,3,3,3,"The analysis is somewhat grounded in the clause text but makes assumptions not explicitly stated. The reasoning is coherent but lacks depth and fails to fully explore the implications of the clause. The overall score reflects that while the analysis is not entirely flawed, it could be more robust and thorough.",0.5,,
+baseline,RareElementResourcesLtd_20171019_SC 13D_EX-99.4_10897534_EX-99.4_Intellectual Property Agreement__Non-Transferable License_3,random,Non-Transferable License,"Such reserved non-exclusive license shall be solely for use by the Company and its Affiliates and shall not be transferable to any Third Party, except in connection with a merger, consolidation, or the sale or transfer of substantially all of the Company's assets associated with the performance of this IP Agreement.","Issue: Does the clause adequately define the scope of the non-transferability of the license?
+
+Rule: A non-transferable license must clearly delineate who is authorized to use the licensed rights and under what conditions such use can occur.
+
+Application: 
+The clause specifies that the reserved non-exclusive license is ""solely for use by the Company and its Affiliates"" and cannot be transferred to any Third Party, except in specific circumstances involving mergers, consolidations, or the sale or transfer of substantially all of the Company's assets associated with the performance of the IP Agreement. This language provides clarity on the scope of the non-transferability, as it limits the license to the Company and its Affiliates and outlines exceptions for certain business transactions.
+
+Conclusion: The clause effectively defines the scope of the non-transferability of the license by specifying the parties authorized to use the licensed rights and the limited circumstances under which transfer might be permissible. The language is clear and unambiguous, meeting the standard set by the rule. To ensure full compliance, the clause should also specify the consequences of unauthorized transfers, such as termination of the license. However, based on the provided text, the clause does adequately define the scope of the non-transferability.",1.0,5,5,5,"The analysis is faithful to the clause text, applying the rule correctly, and the conclusion logically follows. There are no invented facts or conditions, and the reasoning is coherent and legally sound.",0.0,,
+dpo_from_base,"ASHWORTHINC_01_29_1999-EX-10.(D)-PROMOTION AGREEMENT AND NANTZ COMMUNICATIONS, INC.__Most Favored Nation_0",low_judge_score,Most Favored Nation,The Company acknowledges that Nantz Communications' and      Nantz's obligations to CBS or any other television station or network with      which Nantz Communications or Nantz has a contract or arrangement shall      take precedence over any other commitments of Nantz Communications or Nantz      under this Agreement.," Issue: Does the clause establish a Most Favored Nation (MFN) clause?
+
+ Rule: A Most Favored Nation clause ensures that the terms and conditions offered to one party are also extended to all other parties involved in the agreement.
+
+ Application: The clause specifies that Nantz Communications and Nantz's obligations to CBS or any other television station or network with which they have a contract or arrangement shall take precedence over any other commitments of Nantz Communications or Nantz under this Agreement. This directly aligns with the definition of an MFN clause, as it requires that favorable terms for one party must be extended to all parties.
+
+ Conclusion: The clause is indeed a Most Favored Nation clause, ensuring that Nantz Communications and Nantz are subject to the same terms and conditions as CBS or any other television station or network with which they have a contract or arrangement.",1.0,3,2,2,"The analysis misinterprets the clause as an MFN clause, which it is not. The clause actually prioritizes Nantz's obligations to other media entities over those within the current agreement. The reasoning is flawed and does not accurately reflect the clause's intent.",0.75,,
+baseline,AMERICANPHYSICIANSCAPITALINC_03_31_2003-EX-10.26-AGENCY AGREEMENT__Non-Compete_1,low_judge_score,Non-Compete,In return for the exclusive appointment of Agency by MICOA to                   sell its professional liability products listed on the,"Issue: Does the clause establish a non-compete agreement between MICOA and the Agency?
+
+Rule: A non-compete agreement is enforceable if it is reasonable in time, geographic scope, and the type of activity restricted. The agreement must also be supported by adequate consideration and necessary to protect a legitimate business interest.
+
+Application: 
+- Time: The clause does not specify a duration for the exclusivity, which could be seen as unreasonable.
+- Geographic Scope: The clause mentions ""professional liability products listed,"" suggesting a limited geographical area, but does not explicitly state the boundaries.
+- Type of Activity: The clause restricts the Agency from selling MICOA's professional liability products, which is a specific type of activity.
+- Consideration: The clause states that the Agency is being exclusively appointed to sell these products, implying some form of compensation or benefit, thus providing adequate consideration.
+- Legitimate Business Interest: The restriction aims to prevent competition and protect MICOA's market share, which can be considered a legitimate business interest.
+
+Conclusion: Based on the analysis, while the clause outlines a non-compete agreement, it lacks clarity regarding the duration and geographic scope, making it potentially unenforceable due to lack of specificity. Additionally, the absence of explicit boundaries for the type of activity restricted may raise concerns about overreach. Further clarification is needed to ensure compliance with the rule governing non-compete agreements.",0.75,3,4,3,"The analysis is somewhat grounded in the clause text but makes assumptions about the lack of explicit boundaries. The reasoning is coherent but could be more precise in its application of the rule to the clause. The overall score reflects that while the analysis is useful, it could be more precise and less speculative.",0.25,,
+baseline,REGANHOLDINGCORP_03_31_2008-EX-10-LICENSE AND HOSTING AGREEMENT__Cap On Liability_2,random,Cap On Liability,LMG's indemnification obligations under this Section 5.2 will expire twelve (12) months after the Conversion Date.,"Issue: Does the clause effectively cap Mergers and Acquisitions (MLG)’s liability for indemnification?
+
+Rule: A cap on liability is effective if it clearly sets a maximum amount that can be recovered and specifies when the cap expires.
+
+Application: 
+- The clause states that Mergers and Acquisitions (MLG)'s indemnification obligations under Section 5.2 will expire twelve (12) months after the Conversion Date.
+- This provision indicates a clear expiration date for the indemnification obligations.
+- However, the clause does not specify a maximum amount that can be recovered.
+- Without a specified cap on the amount of liability, the clause fails to meet the requirement of setting a maximum recoverable amount.
+
+Conclusion: The clause does not effectively cap Mergers and Acquisitions' (MLG) liability for indemnification due to the absence of a specified maximum amount that can be recovered. To be considered effective, such a clause must include both an expiration date and a cap on the amount of liability.",1.0,5,5,5,"The analysis is faithful to the clause text, applying the relevant legal principle correctly, and logically concluding that the clause is incomplete without a specified maximum amount. All scores are high as the analysis is precise and legally sound.",0.0,,
+dpo_from_base,AMERICANPHYSICIANSCAPITALINC_03_31_2003-EX-10.26-AGENCY AGREEMENT__Non-Compete_1,low_judge_score,Non-Compete,In return for the exclusive appointment of Agency by MICOA to                   sell its professional liability products listed on the," Issue: Whether the clause constitutes a non-compete agreement that restricts the seller's ability to compete in the market.
+
+ Rule: Non-compete agreements are enforceable if they are reasonable in scope, duration, and geographic area, and if they do not impose an undue hardship on the employee.
+
+ Application: The clause requires MICOA to exclusively appoint the Agency to sell MICOA's professional liability products. This restriction is specific to the sale of MICOA's products and does not broadly prohibit MICOA from selling its products through other means. The exclusivity is limited to the products listed, which suggests a reasonable scope. However, the duration and geographic area are not specified, which could be a concern for enforceability.
+
+ Conclusion: The clause may be enforceable if it is reasonably limited in scope, duration, and geographic area, but the lack of specificity regarding these elements makes it difficult to determine its enforceability definitively.",0.944,3,3,3,The analysis is somewhat grounded in the clause text but makes assumptions about the lack of specified duration and geographic area. The reasoning is coherent but could be more clearly connected to the specific terms of the clause. The overall score reflects that the analysis is useful but not without its limitations.,0.444,,

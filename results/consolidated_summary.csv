@@ -1,0 +1,6 @@
+run_id,rubric_n,rubric_structure_ok,rubric_groundedness,rubric_length_ok,rubric_no_contradiction,rubric_aggregate,rubric_parse_ok_rate,judge_n,judge_groundedness,judge_reasoning_quality,judge_overall,judge_parse_ok_rate
+baseline,803,0.9938,0.731,0.9938,0.9913,0.9275,0.9938,150,4.6333,4.64,4.6333,1.0
+sft_qlora,803,1.0,0.9509,1.0,1.0,0.9877,1.0,150,4.7933,4.8133,4.7933,1.0
+sft_lora_fp,803,1.0,0.9473,1.0,0.995,0.9856,1.0,150,4.7667,4.7867,4.76,1.0
+dpo_from_base,803,1.0,0.9763,1.0,1.0,0.9941,1.0,150,4.8267,4.84,4.82,1.0
+dpo_from_sft,803,1.0,0.9847,1.0,1.0,0.9962,1.0,150,4.8067,4.8,4.7933,1.0

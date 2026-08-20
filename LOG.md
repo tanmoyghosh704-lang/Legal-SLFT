@@ -2209,3 +2209,443 @@ Entry format:
   already applied to the `sft_lora_fp` vs. `sft_qlora` comparison.
 
 ---
+
+## 2026-08-20 — LLM-as-judge: built, validated locally, ready for Kaggle
+
+### What I did
+- With the deterministic rubric side of the dual-metric design complete
+  across all 5 runs, built the second half: `src/eval/llm_judge.py`.
+  Scores three dimensions per response (1-5 each) rather than a single
+  quality number -- `groundedness` (faithfulness to the clause,
+  specifically meant to catch what the rubric's word-overlap proxy can't:
+  a fluent paraphrase that subtly invents a condition), `reasoning_quality`
+  (is Rule -> Application -> Conclusion actually coherent and legally
+  sound, not just present), and `overall` (holistic usefulness). A
+  required one-line rationale per score, for interpretability and for
+  cross-checking against the upcoming manual validation pass.
+- Reused `generate_teacher_targets.py`'s proven Ollama HTTP pattern
+  directly (`--host`/`--model`/`--concurrency`, resumable by id) rather
+  than inventing a new mechanism -- this is the same class of problem
+  (many LLM calls against a served model) already solved once this
+  project.
+- Built `src/eval/sample_judge_ids.py`: picks a seeded, common 150-id
+  subsample from the test set once, shared across all 5 runs' judging.
+  Judging the full 803 x 5 = 4,015 rows wasn't worth it for a comparison
+  metric -- same reasoning that justified the earlier 60-row manual
+  review sample over reviewing the full SFT dataset by hand (see
+  `sample_for_review.py` docstring). 750 judge calls total instead.
+- Added `tests/test_llm_judge.py` (5 tests) for the response parser --
+  the one piece of this pure logic testable without a live model: parses
+  a well-formed response, tolerates a stray preamble sentence before the
+  required format (a real, observed judge-model quirk despite the prompt
+  saying "EXACTLY this format, nothing else"), rejects malformed/
+  out-of-range responses, and handles multiline rationale text. All 54
+  project tests green.
+- Validated the *whole* pipeline locally against 3 real rows from
+  `sft_qlora`'s generations (Ollama already installed + the judge model
+  already pulled locally from earlier smoke-testing work) before writing
+  a single line of Kaggle notebook code -- this project's standing rule.
+  All 3 parsed cleanly (~20s/call locally, consistent with this GPU's
+  known throughput). More importantly, read the actual output, not just
+  the parse-success rate: the judge gave genuinely differentiated,
+  substantive scores (4/3/3 on one row specifically because "makes an
+  assumption about exclusivity that isn't explicitly stated" -- a real,
+  specific critique the deterministic rubric's word-overlap check would
+  have missed entirely) rather than rubber-stamping everything 5/5/5.
+  That's the actual bar for "is this judge worth trusting," not just "did
+  the regex match."
+- Built `notebooks/kaggle_llm_judge.ipynb`, structurally identical to
+  `kaggle_teacher_gen.ipynb` (same Ollama-on-T4 setup: zstd + curl
+  install, `OLLAMA_NUM_PARALLEL` background serve, warmup + GPU-placement
+  check) with the marker-based repo/data finders from the later
+  notebooks. Judges all 5 runs sequentially (not parallel across runs --
+  keeps the full `OLLAMA_NUM_PARALLEL` concurrency available to each
+  run's own internal batching rather than splitting it 5 ways) against
+  the same 150-id file, writing `{run_id}_judged.jsonl` per run plus a
+  printed summary table.
+
+### Why this approach (and what alternative was rejected, and why)
+- Considered a single 1-10 "quality" score instead of three 1-5
+  dimensions. Rejected: a single number collapses exactly the distinction
+  this second metric exists to surface -- a response can be well-grounded
+  but poorly reasoned, or vice versa, and the rubric's own aggregate
+  already has this exact collapsing problem (a known, documented
+  limitation from earlier in this project). Three dimensions costs one
+  more field to parse and report, for real added signal.
+- Considered judging the full 803-row test set per run. Rejected on cost/
+  benefit: 4,015 calls vs. 750 for a comparison metric that doesn't need
+  per-row precision the way, say, the training data's quality did --
+  established precedent (the 60-row manual review sample) for scoping a
+  human/LLM-judgment step down from "the whole dataset" without losing
+  the ability to draw a real conclusion.
+
+### Difficulty encountered
+- None -- Ollama and the judge model were already set up locally from
+  earlier smoke-testing work in this project, so validation was fast.
+
+### What I'd do differently
+- Nothing to flag yet -- next step is the real Kaggle run, which is the
+  first test of the notebook itself (the local validation covered the
+  scoring logic and prompt design, not the Kaggle-specific setup steps).
+
+---
+
+## 2026-08-20 — Discovered `baseline_gen.jsonl` was never actually copied into the repo
+
+### What I did
+- Listing `results/*_gen.jsonl` to double check all 5 files existed
+  before pointing the user at the LLM-judge notebook turned up only 4 --
+  `baseline_gen.jsonl` was missing. Root cause, traced back through this
+  session's history: the *original* baseline download (2026-08-19) was
+  read directly from `~/Downloads/results (1)/...` and its aggregate
+  numbers recorded into `results/summary.csv` by hand, but the raw
+  per-row generation file itself was never actually copied into the
+  repo -- and that Downloads folder was later overwritten by a
+  subsequent `results.zip` download for a different run, before the gap
+  was noticed. The aggregate score was never at risk (already on
+  record), but the per-row raw text needed for LLM-judging was
+  genuinely gone.
+- Rather than redo the full 803-row baseline eval to fill this gap,
+  regenerated *only* the 150-row LLM-judge common subsample --
+  `llm_judge.py`'s `--ids-file` filter would only use those 150 rows out
+  of a full 803-row baseline run anyway, so a full re-run would spend
+  GPU-hours reproducing 653 rows that were never going to be judged.
+  Filtered `data/splits/sft_test.jsonl` down to the 150 sampled ids
+  locally (`data/raw/sft_test_judge_sample.jsonl`, all 150 found) and
+  built `notebooks/kaggle_baseline_judge_sample.ipynb` -- a minimal
+  zero-shot generation notebook (reuses `generate.py` directly, no new
+  logic) scoped to just this file.
+
+### Why this approach (and what alternative was rejected, and why)
+- Considered treating this as reason to redo the full baseline eval
+  (would also refresh `results/baseline_scored.jsonl`, which is likewise
+  missing for the same reason). Rejected for now: the aggregate baseline
+  number is already trustworthy (recorded directly from the original
+  download before it was lost), and nothing currently in progress needs
+  the full per-row baseline file except the LLM-judge step, which only
+  needs the 150-row subset. Revisit if a future step (e.g. the write-up's
+  qualitative examples) turns out to need full-baseline per-row text.
+
+### Difficulty encountered
+- None -- caught by a routine "does the file actually exist" check
+  before handing the user a notebook that assumed it did, not by a
+  failure partway through the Kaggle run.
+
+### What I'd do differently
+- Would copy raw generation files into the repo immediately upon
+  download, every time, rather than ever reading numbers directly out of
+  a Downloads folder and treating that as "done" -- this is the second
+  time this session a Downloads-folder file got overwritten before being
+  properly placed (the first was the original baseline summary itself,
+  recovered only because the aggregate numbers happened to already be
+  quoted in the conversation). The lesson from the first near-miss
+  (verify placement) didn't fully generalize to "and check every file the
+  download contained," not just the one immediately needed at the time.
+
+---
+
+## 2026-08-21 — Two Kaggle bugs on the LLM-judge run, then real results
+
+### What I did
+- First failure: `kaggle_llm_judge.ipynb`'s Ollama readiness-check loop
+  crashed with `ReadTimeout` instead of retrying. Root cause: the loop
+  only caught `requests.exceptions.ConnectionError`, but Ollama's own
+  install log had already printed "API is now available" before the
+  server was actually ready to answer requests -- that specific
+  timing window surfaces as a *read* timeout (port open, no response
+  yet), a different exception class than "connection refused" (port not
+  open at all), and the loop didn't retry on it. This is the exact same
+  readiness-check pattern used successfully in `kaggle_teacher_gen.ipynb`
+  earlier in the project -- it just never happened to hit this timing
+  window there. Fixed by catching `(ConnectionError, Timeout)` instead
+  of `ConnectionError` alone.
+- Initially also patched the already-completed `kaggle_teacher_gen.ipynb`
+  with the same fix, on autopilot from this session's "fix defensively
+  everywhere" habit. User correctly pushed back: that notebook's one job
+  is already done and it won't run again, so the fix had zero practical
+  value there -- reverted that change. Worth naming: "fix every instance
+  of a bug class" is the right instinct for code that will run *again*,
+  not for a one-shot artifact that already succeeded. Conflating the two
+  wastes a step without helping anything.
+- Second failure, after the readiness fix worked: `ModuleNotFoundError:
+  No module named 'src.eval.llm_judge'`. Simple stale-upload issue, not a
+  code bug -- the `src.zip` uploaded for this notebook had been zipped
+  before `llm_judge.py`/`sample_judge_ids.py` existed. Confirmed both
+  files present locally (created today) and had the user re-zip and
+  re-upload.
+- Real results, all 5 runs, 150-row common subsample, 100% judge-parse
+  rate throughout:
+
+  | run_id | groundedness | reasoning | overall |
+  |---|---|---|---|
+  | baseline | 4.63 | 4.64 | 4.63 |
+  | sft_qlora | 4.79 | 4.81 | 4.79 |
+  | sft_lora_fp | 4.77 | 4.79 | 4.76 |
+  | dpo_from_sft | 4.81 | 4.80 | 4.79 |
+  | dpo_from_base | 4.83 | 4.84 | 4.82 |
+
+  Placed as `results/{run_id}_judged.jsonl` + `results/
+  llm_judge_summary.csv`.
+
+- **A genuinely important divergence from the deterministic rubric, not
+  just a different number**: the rubric showed baseline groundedness at
+  0.73 vs. ~0.95-0.98 for every tuned variant -- a dramatic ~30%
+  relative jump. The LLM judge sees baseline at 4.63/5 and every tuned
+  variant clustered at 4.76-4.84/5 -- only a ~3-4% relative gap, and the
+  four tuned variants are packed closely enough together (a 0.08-point
+  spread) that their *relative ranking* is probably noise at 150 samples
+  -- notably, the judge even placed `dpo_from_base` fractionally above
+  `dpo_from_sft`, the opposite order from the rubric's own ranking.
+- Checked whether this meant the judge was just being lenient/broken
+  before writing any of that down as a finding: read the actual
+  rationale text behind baseline's *lowest*-scoring rows, not just the
+  aggregate. The judge correctly identified a real misinterpretation (a
+  most-favored-nation-styled clause that the zero-shot model had actually
+  misread) and scored it 2/2/2 with a specific, correct explanation --
+  not a rubber-stamped high score. So the divergence is real judge
+  behavior on a more forgiving absolute scale, not a broken metric:
+  most zero-shot baseline outputs are fluent and "mostly right with
+  minor speculative assumptions" in the judge's holistic view, even
+  where the rubric's stricter word-overlap/quote-matching check flags
+  them as ungrounded.
+
+### Why this approach (and what alternative was rejected, and why)
+- Did not try to force the two metrics into agreement (e.g. by
+  re-tuning the judge prompt's scoring scale until it matched the
+  rubric's spread more closely). The disagreement itself -- both metrics
+  agree alignment helps *in direction*, disagree substantially on
+  *magnitude*, and disagree on the *fine-grained ranking* among the four
+  tuned variants -- is exactly the kind of finding a dual-metric
+  evaluation design exists to surface, and is worth reporting honestly in
+  the write-up rather than papering over by making the two metrics
+  artificially agree.
+
+### Difficulty encountered
+- Two real Kaggle-side issues in a row (readiness-loop exception
+  handling, stale zip), each diagnosed from the actual traceback/error
+  message rather than guessed at.
+
+### What I'd do differently
+- Would default to "does this fix serve a run that hasn't happened yet"
+  as an explicit check before applying a defensive fix to *every*
+  instance of a bug pattern -- the `kaggle_teacher_gen.ipynb` detour was
+  avoidable by asking that question up front instead of after the user
+  had to ask it for me.
+
+---
+
+## 2026-08-21 — Manual judge validation sample built (35 rows)
+
+### What I did
+- Filled another leftover gap first: `baseline_scored.jsonl` (rubric
+  scores) didn't exist for the 150-row judge sample either, same root
+  cause as the earlier missing `baseline_gen.jsonl` -- the original full
+  803-row `baseline_scored.jsonl` was lost along with it. Unlike
+  generation, scoring is pure CPU work (`rubric.py` has no model
+  dependency), so just ran `score.py` locally on the existing 150-row
+  `baseline_gen.jsonl` -- took seconds. Result (aggregate 0.9264,
+  groundedness 0.7056) closely matches the original full 803-row
+  baseline (0.9275 / 0.7310), confirming the 150-id sample is
+  representative, not a fluke subset.
+- Built `src/eval/sample_judge_validation.py`: three strata, not the
+  two `sample_for_review.py` used, because this sample has a second
+  purpose that one didn't -- validating not just "is this judge score
+  reasonable" but "do the rubric and the judge actually agree," since
+  the LLM-judge run surfaced a real divergence between the two metrics
+  (2026-08-21 entry above). Strata: 15 lowest-judge-overall rows, 10
+  highest rubric/judge-disagreement rows (scores normalized to the same
+  0-1 scale first), 10 unbiased random rows. 35 total, within the
+  spec's "30-40 examples" target.
+- Ran it for real: 35 rows written to `data/review/
+  llm_judge_validation_sample.csv`, correctly stratified (15/10/10).
+  Spot-checked the single highest-disagreement row before trusting the
+  sample was actually useful, not just correctly counted: rubric scored
+  it 0.725, judge scored it 5/5. Read the actual clause and response --
+  the response *is* faithfully grounded (a paraphrase of a "prior
+  written consent" export restriction, not a direct quote), so this
+  looks like the rubric's already-documented word-overlap-fallback
+  limitation underscoring a genuinely well-grounded paraphrase, with the
+  judge correctly recognizing what the rubric's heuristic couldn't. A
+  concrete, checkable example for the human validation pass, not just an
+  abstract "these disagree" data point.
+- Caught and fixed a real bug in my own test while writing it, not in
+  the shipped script: `load_joined`'s `run_ids` parameter defaulted
+  directly to the module-level `RUN_IDS` list in the function signature
+  (`def load_joined(results_dir, run_ids=RUN_IDS)`) -- Python evaluates
+  default argument values once, at function *definition* time, so a test
+  that monkeypatches `RUN_IDS` afterward to point at synthetic fixture
+  data wouldn't actually affect calls relying on that default, silently
+  falling back to the real (non-existent, in a tmp_path fixture)
+  `results/` filenames. Fixed by resolving `run_ids=None` inside the
+  function body instead (`if run_ids is None: run_ids = RUN_IDS`), the
+  standard idiom for exactly this pitfall. Added `tests/
+  test_sample_judge_validation.py` (4 tests, one of which -- the
+  end-to-end test -- is the one that would have silently misrepresented
+  what it was testing without this fix) -- full suite 58/58 green.
+
+### Why this approach (and what alternative was rejected, and why)
+- Considered sampling at the clause level (one clause, all 5 runs'
+  outputs shown side by side) instead of independent (run, id) rows, to
+  make cross-run ranking comparisons easier to eyeball. Rejected for this
+  pass: would only allow ~7 distinct clauses within a 35-row budget,
+  much less coverage than 35 independent judgments, and the three-strata
+  design (especially the disagreement stratum) already surfaces the most
+  diagnostically useful individual rows without needing the paired
+  layout.
+
+### Difficulty encountered
+- The default-argument late-binding bug -- caught by the test itself
+  behaving unexpectedly (looking for files that shouldn't have been
+  needed) rather than by inspection, which is a reasonable way for this
+  specific bug class to surface, but worth remembering as a checklist
+  item (avoid mutable/name-lookup default arguments when the referenced
+  name might need to vary later, e.g. under test) for any future script
+  with a similar "default to a module-level constant" parameter.
+
+### What I'd do differently
+- Nothing on the sampling design. Would write default arguments as
+  `None`-resolved-in-body as a standing habit for any function whose
+  default references a module-level constant, rather than learning this
+  per-instance via a confused test failure each time.
+
+---
+
+## 2026-08-21 — LLM judge's own reliability: a real, verified groundedness blind spot
+
+### What I did
+- The 35-row sample came back reviewed via an external tool, with
+  `model_verdict`/`model_notes` filled in (an AI-generated triage pass,
+  not the human review the sample was built for -- `human_verdict`/
+  `human_notes` are still blank). The file itself self-labeled this
+  plainly: "CAUTION: verdicts above are model-generated, not human. Use
+  for triage... do not report as inter-rater agreement." Exactly the
+  same honest self-flagging pattern as the original 60-row SFT review
+  sample earlier in this project (2026-08-17) -- "this is a model
+  reviewing model output... treat this as a triage pass."
+- Did not take the triage pass's claims on faith. Independently
+  re-read the raw clause text and response for the three most
+  consequential flagged failure modes before accepting any of them as a
+  real finding:
+  1. **"Groundedness 5 on invented content"** (rows 24, 33): verified
+     both directly. Row 33's response repeatedly refers to the clause's
+     actual party "LMG" as a fabricated entity, "Mergers and
+     Acquisitions (MLG)" -- a genuine hallucinated name, invented out of
+     nowhere -- while the judge scored groundedness a perfect 5 and
+     explicitly wrote "there are no invented facts." Row 24's response
+     invents a carve-out ("does not extend to the Consultant's business
+     activities or employment") directly contradicting the clause's own
+     "under no circumstances" language; the judge's rationale just said
+     "could be more precise," missing the fabrication.
+  2. **"Phantom omission critique"** (row 0, the largest single claimed
+     failure mode at 6/35 rows): verified. The response explicitly names
+     the clause's required "sworn statement or certificate from a senior
+     officer or auditors" mechanism -- twice -- yet the judge's rationale
+     faults it for "not fully capturing the requirement for a sworn
+     statement." A factually false critique, not a subjective quibble.
+- All three verified claims held up under direct inspection -- this
+  is a real, credible finding, not an artifact of trusting an
+  AI-generated triage summary uncritically. Placed the reviewed CSV and
+  findings summary at `data/review/llm_judge_validation_reviewed.csv`
+  and `llm_judge_validation_findings.txt`.
+
+### Why this matters for the write-up
+- This meaningfully qualifies how much weight the LLM-judge numbers
+  (2026-08-21, earlier entry) should carry, specifically on
+  groundedness -- the exact dimension this whole project's evaluation
+  design treats as most important. The judge can miss fabricated entity
+  names and invented carve-outs while explicitly asserting no
+  fabrication exists, and can issue confidently-worded critiques that
+  are factually contradicted by the response it's critiquing. The
+  deterministic rubric's groundedness check, despite its own documented
+  false-positive risk on legitimate paraphrases (2026-08-17/19 entries),
+  is at least checking something mechanical (quote/word-overlap against
+  the actual clause text) rather than being satisfied by fluent,
+  well-structured prose regardless of fidelity -- this is now evidence,
+  not just a design assumption, that the rubric's groundedness signal
+  may be more trustworthy than the judge's for this specific failure
+  mode, even though the judge is better at catching *reasoning*-level
+  problems (the misread MFN clause found in the first LLM-judge pass,
+  2026-08-21) that the rubric can't see at all. Neither metric
+  dominates the other -- write this up as a real, substantive limitation
+  of LLM-as-judge for this task, not a footnote.
+- The overall "54% judge-verdict upheld" and per-run/per-sample-reason
+  breakdowns in `validation_findings.txt` should be reported, if at all,
+  with the same caution the file itself states -- as one AI system's
+  triage of another's outputs, useful for knowing where to look, not as
+  a validated agreement rate. The three findings above are reportable
+  because they were independently verified against source text, not
+  because the triage pass said so.
+
+### Difficulty encountered
+- None -- this was a straightforward verify-before-trust pass, the same
+  discipline applied consistently throughout this project to any
+  automated claim about data quality.
+
+### What I'd do differently
+- The `human_verdict`/`human_notes` columns remain genuinely unfilled.
+  If time allows before the write-up, a real human pass -- even just on
+  the specific rows already flagged above, to confirm agreement with the
+  now-twice-removed (AI reviewing AI reviewing model output) analysis --
+  would be the more defensible thing to cite as "validated" rather than
+  "independently spot-checked by Claude."
+
+---
+
+## 2026-08-21 — Results consolidated; `WRITEUP.md` produced
+
+### What I did
+- User directed: treat the AI-reviewed `llm_judge_validation_reviewed.csv`
+  as the judge-validation record (skip the optional real-human pass for
+  now), skip plots, and move straight to results consolidation + a
+  write-up distilled from this log -- with an explicit instruction to
+  make the write-up thorough on methods/results/findings.
+- Built `results/consolidated_summary.csv`: rubric (`summary.csv`) and
+  LLM-judge (`llm_judge_summary.csv`) scores merged side by side per
+  `run_id`, one table instead of two separate files to cross-reference by
+  hand.
+- Re-read this entire log start to finish (~2,600 lines at that point,
+  every dated entry from 2026-08-15 through the judge-reliability finding)
+  before writing anything, rather than relying on working memory of a
+  long session -- cross-checked every number that ended up quoted in the
+  write-up against the actual `results/*.csv` files afterward (not just
+  against the log's own prose) and confirmed exact matches before treating
+  the document as done.
+- Wrote `WRITEUP.md`: a distilled, results-oriented narrative (problem/
+  approach, data pipeline, dual-metric evaluation design, training
+  method + the full infrastructure debugging chain condensed to its
+  throughline, manual-review data-quality findings, full results tables
+  for both metrics, five numbered key findings, the LLM-judge reliability
+  finding with its three independently-verified examples, limitations,
+  and what's left) -- meant to be read start to finish, with `LOG.md`
+  remaining the line-by-line-defensible source of record it was always
+  built to be.
+
+### Why this approach (and what alternative was rejected, and why)
+- Re-read the full log rather than distill from the running summary
+  already held in context -- a write-up whose entire purpose is being
+  quoted accurately in an interview shouldn't be built from a summary of
+  a summary; going back to the primary source (and then re-verifying its
+  numbers against the actual result files, a third independent check) is
+  the same "verify before trusting" discipline applied throughout this
+  project to everything else, now applied to producing the interview-prep
+  artifact itself.
+- Kept `WRITEUP.md` and `LOG.md` as two separate documents with distinct
+  jobs rather than merging them -- `LOG.md`'s chronological, warts-and-all
+  structure (including reverted decisions, wrong first attempts, and
+  bugs in the debugging process itself) is exactly what makes it useful
+  for defending *how* a conclusion was reached under interview
+  questioning; collapsing that into a clean narrative would lose the
+  thing that makes the log valuable, while a narrative-only document is
+  what's actually readable start to finish.
+
+### Difficulty encountered
+- None -- a synthesis task, not a debugging one.
+
+### What I'd do differently
+- Nothing to flag on this pass. Remaining work per the user's own
+  priority order: FastAPI serving of `dpo_from_sft` (the best-performing
+  adapter on both metrics), and the still-open option of a genuine human
+  pass on the judge-validation sample if time allows before any external
+  presentation of this work.
+
+---
