@@ -1644,3 +1644,568 @@ Entry format:
   documented in `rubric.py`'s own docstring, not a real quality problem.
 
 ---
+
+## 2026-08-19 — `dpo_from_sft`: built `train_dpo.py` + Kaggle notebook
+
+### What I did
+- Wrote `src/train/train_dpo.py`: same parameterized-script philosophy as
+  `train_sft.py` (one script for both `dpo_from_sft`, warm-started via
+  `--adapter`, and `dpo_from_base`, fresh LoRA, `--adapter` omitted --
+  not two scripts to keep in sync). Reuses every fix already found for
+  the SFT script: single-GPU `device_map={"":0}` pin, gradient
+  checkpointing, `--use-unsloth` opt-in path, and the capability-aware
+  bf16/fp16 fix.
+- Read `trl`'s actual installed source (`dpo_config.py`, `dpo_trainer.py`)
+  directly rather than relying on memory for the DPO-specific API,
+  since `trl.DPOTrainer` fails to import at all locally (see below) --
+  confirmed two things worth knowing before writing a line of training
+  code: (1) `DPOConfig` defaults `bf16=True` unconditionally per its own
+  docstring ("bf16: Defaults to True if fp16 is not set, instead of
+  False") -- the *exact* T4/Turing bug just fixed for `SFTConfig`, silently
+  reintroduced by default if not explicitly overridden here too; (2) when
+  `ref_model=None` and the model passed in is already a `PeftModel`,
+  `DPOTrainer` uses the model itself (adapters disabled internally) as
+  its own implicit reference rather than requiring a second full model
+  copy -- exactly the mechanism needed for an efficient warm-start.
+- Warm-start (`--adapter`) loads the existing PEFT adapter with
+  `PeftModel.from_pretrained(base_model, adapter_path, is_trainable=True)`
+  (vanilla path) or `FastLanguageModel.from_pretrained(model_name=
+  adapter_path, ...)` (Unsloth path, which supports loading a saved
+  adapter checkpoint directly) and continues training those same LoRA
+  weights -- rather than merging the SFT adapter into the base model
+  first, which isn't straightforward with a 4-bit-quantized base anyway.
+- Real, honest limitation: `trl.DPOTrainer` cannot even be *imported* on
+  this local dev machine -- it needs `torch.distributed.fsdp.FSDPModule`,
+  which doesn't exist in the locally-pinned `torch==2.5.1` (added in a
+  later PyTorch release). This is one level worse than the earlier
+  Unsloth situation (that one could at least partially run before
+  failing); this fails at the `from trl import DPOTrainer` line itself.
+  Verified this wasn't fixable by a quick local patch (deliberately did
+  *not* repeat the "just upgrade torch and see" mistake from the Unsloth
+  saga, having already twice broken and had to fully repair the local
+  environment doing exactly that on 2026-08-18) -- accepted the
+  limitation and adjusted scope instead of forcing it.
+- Moved the `from trl import DPOConfig, DPOTrainer` import from module
+  level into `main()` specifically so `load_dpo_dataset` (pure logic,
+  needs only `datasets`) stays importable and unit-testable locally even
+  though `DPOTrainer` itself can't be. Verified `load_dpo_dataset` against
+  the real `data/splits/dpo_valid.jsonl` (726 rows, correct `prompt`/
+  `chosen`/`rejected` columns) and added `tests/test_train_dpo.py` (2
+  tests, both passing). Full suite: 49/49 green.
+- Built `notebooks/kaggle_dpo.ipynb`, structurally identical to
+  `kaggle_train_eval.ipynb` (Unsloth install + CUDA-survived check,
+  marker-based repo/data finder -- extended with a `find_dir()` helper for
+  locating the uploaded `sft_qlora` adapter directory the same
+  content-marker way -- dry run before full run, hyperparameters read
+  live from `config.yaml`). `USE_UNSLOTH = True` from the start this
+  time, rather than rediscovering the same 117-125s/step problem before
+  reaching for it.
+
+### Why this approach (and what alternative was rejected, and why)
+- Did not try to force local validation of the actual `DPOTrainer`
+  construction/training loop, unlike the earlier (partially successful)
+  effort for `SFTTrainer`. The FSDPModule import failure is a hard
+  version floor, not a fixable local config issue, and the last two
+  attempts to "just upgrade a package to fix an import" on this machine
+  both broke the working environment and cost real time to repair. Called
+  this one early instead: documented the limitation plainly (in the
+  script's own module docstring and the notebook's markdown) and leaned
+  on reading `trl`'s actual source code as the substitute for runtime
+  verification, plus emphasized the Kaggle dry-run cell more heavily than
+  usual as the real first test of this code.
+- Chose warm-start-by-continuing-the-adapter over merge-then-fresh-LoRA:
+  simpler (no merge step, which is genuinely awkward with a 4-bit
+  quantized base), and it's what `DPOTrainer`'s own implicit-reference-
+  model mechanism is built around when the model is already a `PeftModel`
+  -- fighting that design by merging first would have meant giving up the
+  free reference-model memory savings for no benefit.
+
+### Difficulty encountered
+- The FSDPModule import failure, and the discipline not to try to
+  "just fix" it locally given the recent cost of doing exactly that
+  twice with Unsloth. Reading library source directly (rather than
+  either guessing from memory or insisting on a local runtime test) was
+  the resolution -- confirmed correct API usage without needing the
+  import to succeed.
+
+### What I'd do differently
+- Nothing to flag yet -- the honest test is the Kaggle dry run, same as
+  every other unverified-locally code path this session.
+
+---
+
+## 2026-08-19 — `kaggle_dpo.ipynb`'s first run: CUDA-survived assertion caught a real failure
+
+### What I did
+- User's first real Kaggle run of `kaggle_dpo.ipynb` hit the CUDA-survived
+  assertion right after the Unsloth install cell: `"CUDA available after
+  unsloth install: False"`. Exactly the failure this project already knew
+  about from the local dev machine (2026-08-18) -- but this time it
+  happened on Kaggle itself, in a run whose earlier sibling (the
+  `sft_qlora` notebook) had used the *identical* bare `pip install -q
+  unsloth` command and *not* broken CUDA. Confirms the failure is
+  non-deterministic across sessions (likely: pip resolving a different,
+  incompatible `torch` build depending on index/cache state at
+  install time), not something that only affects local environments.
+- The assertion did exactly its job: stopped the notebook after ~80
+  seconds instead of letting it proceed to train for hours on a broken
+  GPU setup, or silently fall back to slow/CPU execution unnoticed.
+- Fixed by switching the install to `pip install --no-deps unsloth
+  unsloth_zoo` in both `kaggle_dpo.ipynb` and (proactively, not reactively)
+  `kaggle_train_eval.ipynb` -- the second one hadn't failed yet, but it
+  has the exact same underlying risk (identical bare install command),
+  and there's no reason to wait for it to fail there too before applying
+  a fix already known to be correct. `unsloth_zoo` needs `--no-deps`
+  alongside `unsloth` itself since it's unsloth's own runtime dependency
+  and wouldn't get installed at all otherwise.
+- Separately, made the adapter-finding logic in `kaggle_dpo.ipynb` more
+  robust while looking at the user's actual Kaggle dataset structure:
+  originally `find_dir(name="sft_qlora")` required a directory *literally
+  named* `sft_qlora` containing `adapter_config.json`. Changed to
+  `find_adapter_dir()`, which searches by content marker only
+  (`adapter_config.json` + `adapter_model.safetensors` present together,
+  regardless of folder name) -- consistent with every other finder in
+  this project (`find_repo`, `find_data_file`) after repeated real nesting
+  surprises this session. In this specific case the user's upload turned
+  out to already have a properly-named `sft_qlora/` folder, so the
+  original name-matching version would have worked too -- but the more
+  robust version costs nothing and removes a class of failure before it
+  has a chance to happen, matching the project's established pattern of
+  not waiting for a name-matching assumption to break before fixing it.
+
+### Why this approach (and what alternative was rejected, and why)
+- Did not try to root-cause *why* pip resolved differently between the
+  two Kaggle sessions (e.g. diffing exact package versions before/after)
+  -- `--no-deps` sidesteps the non-determinism entirely rather than
+  chasing a moving target across ephemeral Kaggle container states that
+  can't be inspected after the fact anyway (the failed session's exact
+  pip resolution isn't preserved anywhere to diff against).
+
+### Difficulty encountered
+- None beyond the assertion doing exactly what it was built for --
+  this is the intended outcome of adding it in the first place, not a
+  new problem.
+
+---
+
+## 2026-08-19 — `dpo_from_sft` complete: DPO improves further on top of SFT
+
+### What I did
+- Second `--no-deps` attempt still hit `CUDA available: False`, but this
+  time checked the *first* cell's output (before Unsloth was ever
+  touched) rather than assuming the Unsloth install was still the cause.
+  It was already `False` there too -- meaning the Unsloth install was
+  never the problem in this instance; something about that specific
+  Kaggle session never had a working GPU attached, most likely transient
+  (possibly the weekly GPU-hour quota, given the volume of multi-hour
+  sessions run today) rather than anything code-related. Flagged this to
+  the user as a "stop debugging code, check Kaggle's side" moment instead
+  of proposing a third code fix for a problem the evidence no longer
+  supported blaming on `pip install unsloth`.
+- A subsequent fresh session ran cleanly: `749/749` steps (5,987 DPO rows
+  / effective batch 8 * 1 epoch -- matches the config exactly) at a
+  stable ~12.7s/step. Slower than SFT's ~7-8s/step, which is expected and
+  not a regression -- DPO computes log-probabilities for both the chosen
+  *and* rejected sequence each step, roughly double SFT's per-step
+  forward-pass work. Total training time ~2.6-2.7 hours. Training signal
+  looked healthy before eval even ran: `rewards/accuracies: 1`,
+  `logps/chosen` meaningfully higher (less negative) than
+  `logps/rejected`, loss decreasing.
+- Downloaded results, placed in the repo: `adapters/dpo_from_sft/` (final
+  adapter only -- same cleanup as `sft_qlora`, dropped the
+  `checkpoint-749`/`ref` subdirectories since the top-level files already
+  have the final trained state), `results/dpo_from_sft_gen.jsonl`,
+  `results/dpo_from_sft_scored.jsonl`. Appended the `dpo_from_sft` row to
+  the same `results/summary.csv` used for `baseline`/`sft_qlora`.
+- Full pipeline result, same 803-row test set throughout:
+
+  | metric | baseline | sft_qlora | dpo_from_sft |
+  |---|---|---|---|
+  | structure_ok | 0.994 | 1.000 | 1.000 |
+  | groundedness | 0.731 | 0.951 | **0.985** |
+  | length_ok | 0.994 | 1.000 | 1.000 |
+  | no_contradiction | 0.991 | 1.000 | 1.000 |
+  | aggregate | 0.927 | 0.988 | **0.996** |
+  | parse_ok_rate | 0.994 | 1.000 | 1.000 |
+
+  DPO moved groundedness another +0.034 on top of SFT's already-large
+  gain (0.731 -> 0.951 -> 0.985), and aggregate crossed 0.99. This is
+  exactly the intended story for the write-up: each alignment stage
+  contributes a further, real improvement on the metric the spec calls
+  out as most important, not just format compliance (which was already
+  near-ceiling from SFT onward).
+- Spot-checked 3 random scored rows by hand (`random.seed(2)`) rather than
+  trusting the aggregate alone -- all three scored a perfect 1.0 and, on
+  reading the actual generated text, were genuinely well-grounded,
+  faithful to the source clause, and legally coherent. The strong
+  aggregate number holds up under manual inspection, not just the rubric.
+
+### Why this approach (and what alternative was rejected, and why)
+- Did not propose a third variation of "fix the pip install" once the
+  first cell's own log showed `CUDA available: False` before Unsloth was
+  even reached -- continuing to iterate on the Unsloth install command
+  would have been debugging the wrong layer entirely. Checking the
+  earliest possible evidence point (the very first cell) before proposing
+  another fix is what caught this.
+
+### Difficulty encountered
+- The two consecutive "CUDA broke" failures looked identical on the
+  surface (same assertion message) but had different causes -- one
+  (2026-08-18/first Kaggle attempt) was a real pip/dependency issue fixed
+  by `--no-deps`; this one was not code-related at all. Surface-identical
+  symptoms with different root causes is exactly why checking evidence
+  each time matters more than pattern-matching to the last fix that
+  worked.
+
+### What I'd do differently
+- Nothing to flag on the code side. If GPU-hour quota exhaustion turns
+  out to be the actual recurring cause going forward, worth tracking
+  Kaggle session start times/durations somewhere to budget the remaining
+  ablations (`sft_lora_fp`, `dpo_from_base`) against the weekly quota
+  rather than discovering it mid-run again.
+
+---
+
+## 2026-08-19 — Built the two remaining ablation notebooks
+
+### What I did
+- Built `notebooks/kaggle_sft_lora_fp.ipynb` and `notebooks/
+  kaggle_dpo_from_base.ipynb`, both minimal diffs off the already-proven
+  `kaggle_train_eval.ipynb`/`kaggle_dpo.ipynb` (same Unsloth `--no-deps`
+  install + CUDA-survived check, marker-based finders, dry-run-before-
+  full-run discipline). No new training-script code needed -- both
+  ablations were already directly expressible via existing `train_sft.py`/
+  `train_dpo.py` CLI flags: `sft_lora_fp` just omits `--load-in-4bit`
+  (full bf16 precision instead of 4-bit NF4), `dpo_from_base` just omits
+  `--adapter` (fresh LoRA on the base model instead of warm-starting from
+  `sft_qlora`). This is exactly the payoff of the "one parameterized
+  script, not N separate scripts per run" rule stated in both scripts'
+  own docstrings from the start.
+- Flagged directly in `kaggle_sft_lora_fp.ipynb`'s intro markdown (not
+  buried): this run has real, elevated OOM risk versus every prior
+  Kaggle run this project has done, since the base model loads in full
+  bf16 rather than 4-bit-quantized -- roughly 4x the base-weight memory
+  footprint (~6GB vs. ~1.5GB for a 3B model) on the same 16GB T4 that's
+  already been tuned close to its limits for the 4-bit case. Told the
+  user explicitly: if the dry run OOMs, drop `per_device_batch_size`
+  before retrying, don't just rerun the same command hoping it was a
+  fluke.
+- Verified both configs build correctly against the real `config.yaml`
+  and parse via the actual `argparse` definitions before handing them
+  over -- confirmed `sft_lora_fp`'s args produce `load_in_4bit=False` and
+  `dpo_from_base`'s args produce `adapter=None`, i.e. each ablation
+  actually isolates the one variable it's meant to isolate and nothing
+  else drifted. Full 49-test suite still green (nothing in `src/`
+  changed for this entry, but confirmed anyway before handing off).
+
+### Why this approach (and what alternative was rejected, and why)
+- Did not build a single combined notebook running both ablations
+  sequentially in one session, even though that's possible (both are
+  independent, don't share a warm-start dependency the way `dpo_from_sft`
+  needed `sft_qlora`). Kept them as two separate notebooks instead --
+  lets the user run them in parallel across two Kaggle sessions if quota
+  allows (faster wall-clock), and keeps each notebook's failure surface
+  isolated (an OOM in `sft_lora_fp` shouldn't block or complicate
+  `dpo_from_base`'s independent, lower-risk run).
+
+### Difficulty encountered
+- None -- this was a comparatively easy addition specifically because
+  every hard problem (multi-GPU pinning, OOM tuning, bf16 eligibility,
+  Unsloth install fragility) had already been found and fixed for the
+  first two runs, and both scripts were built parameterized enough from
+  the start to express these ablations without new code.
+
+### What I'd do differently
+- Nothing to flag yet -- as with every other not-yet-run notebook this
+  session, the honest test is what Kaggle reports back.
+
+---
+
+## 2026-08-19 — `sft_lora_fp`: training succeeded, eval crashed on a `torchao` version bug
+
+### What I did
+- `kaggle_sft_lora_fp.ipynb`'s first real run: training completed cleanly
+  -- 1,125/1,125 steps, 3h15m, `train_loss: 0.8433`, adapter saved. No OOM,
+  despite this being the first run at full bf16 base-model memory
+  footprint (the elevated-risk warning in the notebook's own intro didn't
+  materialize this time). Then it crashed immediately at the start of
+  eval generation: `ImportError: Found an incompatible version of
+  torchao. Found version 0.10.0, but only versions above 0.16.0 are
+  supported`, raised from inside `peft.tuners.lora.torchao.
+  dispatch_torchao` while `PeftModel.from_pretrained` was trying to wrap
+  the base model's layers with the trained LoRA adapter.
+- Root-caused before reacting: `peft` tries a sequence of "dispatcher"
+  functions to decide how to wrap each target layer, based on the base
+  layer's type (bitsandbytes-quantized, torchao-quantized, or plain
+  `nn.Linear`). For every prior run (`sft_qlora`, `dpo_from_sft` -- both
+  4-bit-quantized bases), the bitsandbytes dispatcher matches first and
+  the torchao dispatcher is never reached. `sft_lora_fp` is the *first*
+  run in this whole project loading an adapter onto a full-precision
+  (plain `nn.Linear`) base -- which reaches the torchao dispatcher, whose
+  own version-compatibility check raises `ImportError` outright (rather
+  than returning `None`/false and letting dispatch fall through to the
+  correct plain-`nn.Linear` handler) when it finds an installed version
+  below `peft`'s required minimum. Kaggle's base image ships
+  `torchao==0.10.0`; `peft==0.20.0` wants `>=0.16.0`.
+- Did not lose the 3h15m of completed training: the crash happened
+  *after* `"Adapter saved to /kaggle/working/adapters/sft_lora_fp"`
+  printed, so the trained adapter was sitting in that failed run's
+  Output tab regardless of the exception. Had the user download it
+  directly rather than accepting a wasted retrain, copied it into
+  `adapters/sft_lora_fp/` locally (dropping the redundant
+  `checkpoint-{375,750,1125}` subdirectories, same pattern as
+  `sft_qlora`/`dpo_from_sft`).
+- Built `notebooks/kaggle_sft_lora_fp_eval_only.ipynb`: a minimal
+  eval-only notebook that skips training entirely, loads the
+  already-trained adapter (uploaded as a Kaggle Dataset input, found via
+  the same content-marker `find_adapter_dir()` helper already used for
+  `dpo_from_sft`'s warm-start), and runs just the generation + scoring
+  steps -- with `!pip uninstall -y -q torchao` added before anything
+  touches the adapter. This project doesn't use torchao's own
+  quantization scheme anywhere (only `bitsandbytes` NF4), so nothing
+  depends on it; uninstalling it entirely sidesteps the buggy version
+  check rather than requiring a specific compatible version to be
+  installed instead.
+- Applied the same `torchao` uninstall defensively to all four other
+  notebooks (`kaggle_train_eval.ipynb`, `kaggle_dpo.ipynb`,
+  `kaggle_dpo_from_base.ipynb`, and the full (not eval-only)
+  `kaggle_sft_lora_fp.ipynb`, for any future from-scratch rerun) even
+  though only full-precision adapter loading actually triggers the bug --
+  the other three always load adapters onto 4-bit-quantized bases via
+  the bitsandbytes dispatch path, so they were never actually at risk.
+  Costs nothing (the package isn't needed anywhere in this project) and
+  removes a class of failure before it has a chance to recur, same
+  "don't wait for it to bite elsewhere too" pattern as the `--no-deps`
+  Unsloth fix.
+
+### Why this approach (and what alternative was rejected, and why)
+- Considered pinning/upgrading `torchao` to a compatible version instead
+  of uninstalling it. Rejected: uninstalling is strictly simpler (no
+  version to get right, no new package version to trust sight-unseen)
+  and correct here specifically because this project has zero actual
+  dependency on `torchao` -- it's a transitive presence in Kaggle's base
+  image, not something any of this project's code imports or requires.
+  Pinning would have solved this one symptom while leaving an unused
+  dependency in place for no reason.
+- Prioritized not losing the already-completed training over getting a
+  "clean" single-notebook run -- building a second, small notebook was
+  worth the extra file for saving 3+ hours of redundant GPU-hours,
+  consistent with the project's demonstrated pattern (skipping baseline
+  reruns, reusing already-downloaded adapters) of never re-deriving
+  something already paid for in GPU-hours when it can be reused directly.
+
+### Difficulty encountered
+- None beyond the version-bug itself, which was quick to diagnose once
+  the traceback was read carefully (the dispatcher-sequence mechanism
+  and where exactly it raised made the "only affects full-precision
+  loading" conclusion clear directly from the stack trace, not guesswork).
+
+### What I'd do differently
+- Would have uninstalled `torchao` defensively across all notebooks from
+  the very first one (`kaggle_train_eval.ipynb`), rather than only after
+  hitting the bug on the ablation run that happened to be the first to
+  exercise the full-precision code path -- the same "audit every
+  model-loading code path for a class of risk once one instance of it is
+  found" lesson already written down once this session (2026-08-18, the
+  `device_map` pin) and apparently not yet generalized into a habit
+  applied proactively to *new* dependency-version risks, only fixed
+  ones.
+
+---
+
+## 2026-08-20 — `find_adapter_dir()` had a silent wrong-adapter bug
+
+### What I did
+- Before running `kaggle_sft_lora_fp_eval_only.ipynb`, the user's Kaggle
+  dataset upload showed both `adapters/sft_lora_fp/` (the real, fully
+  trained adapter) *and* `adapters/sft_lora_fp_dryrun/` (the 5-step
+  dry-run checkpoint from the same earlier failed run) present together
+  -- both are valid upload artifacts, so nothing wrong with the upload
+  itself. But `find_adapter_dir()` (used here and in `kaggle_dpo.ipynb`
+  for the `sft_qlora` warm-start) returned the *first* directory
+  `os.walk` happened to find containing `adapter_config.json` +
+  `adapter_model.safetensors` -- and `os.walk`'s traversal order isn't
+  guaranteed alphabetical on Kaggle's filesystem. It could have silently
+  returned the untrained dry-run adapter instead of the real one, with
+  no error at all -- the eval would have run to completion and produced
+  a plausible-looking but meaningless score for a barely-trained model,
+  the worst kind of bug (wrong answer, not a crash) for a project whose
+  whole point is being able to trust the reported numbers.
+- Caught by reading the actual dataset tree structure the user was about
+  to run against, before running it -- not by the code failing on its
+  own.
+- Fixed in both notebooks: `find_adapter_dir()` now collects *every*
+  directory matching the content marker, explicitly filters out any path
+  containing `"dryrun"`, and requires exactly one survivor -- raising a
+  clear, explicit error listing all candidates found if that's not the
+  case, rather than silently picking one. Verified the fix directly with
+  a local simulation reproducing the exact real+dryrun-present scenario
+  from the user's actual dataset tree (not just reasoning about it) --
+  confirmed it picks the real adapter, not just "would probably work."
+
+### Why this approach (and what alternative was rejected, and why)
+- Considered just telling the user to delete the dry-run folder from
+  their upload instead of fixing the code. Rejected: that fixes this one
+  upload but leaves the same silent-wrong-pick risk live for every future
+  run, since dry-run artifacts are a natural, expected byproduct of this
+  project's own established "always dry-run before the full run" pattern
+  -- the code should be robust to its own artifacts being present, not
+  rely on the user remembering to clean up before every upload.
+- Chose "require exactly one match, error otherwise" over "prefer the
+  non-dryrun one automatically without erroring" -- erroring loudly when
+  the situation is ambiguous is safer than silently guessing right this
+  time and wrong some other time under a different naming pattern not yet
+  anticipated.
+
+### Difficulty encountered
+- None -- found by inspection before it could cause harm, not by
+  debugging a failure after the fact.
+
+### What I'd do differently
+- This is the second time this session a "return the first match" helper
+  turned out to have a latent correctness bug once more than one valid
+  candidate existed (first the multi-GPU pipeline-parallelism assumption,
+  now this). Worth treating "first match wins" as a code smell to
+  double-check specifically, not just "search by content marker instead
+  of assuming a name/path" -- the search strategy was already right, the
+  bug was in what to do when it finds more than one.
+
+### Addendum: the fix itself wasn't complete on the first pass
+- Running the just-fixed `find_adapter_dir()` for real immediately raised
+  its own new error -- correctly this time, not silently wrong -- because
+  the uploaded dataset (a raw Kaggle output download, not hand-curated)
+  also contained the real adapter's own intermediate epoch checkpoints
+  (`checkpoint-{375,750,1125}`, from `save_strategy="epoch"`), each of
+  which *also* matches the content marker. The `dryrun`-only exclusion
+  filter didn't anticipate this second, independent source of the same
+  ambiguity class. Extended the filter to also exclude any path
+  containing `checkpoint-`, re-verified with a local simulation
+  reproducing the user's *exact* observed directory listing (dry-run +
+  three epoch checkpoints + the real top-level adapter, six directories
+  total) before handing the fix back a second time.
+- Worth being honest about the shape of this: the first fix (2026-08-20,
+  same entry above) was framed as "caught by inspection before running,"
+  which was true for the dry-run case -- but the checkpoint-subdirectory
+  case was *not* anticipated in advance and was only found because the
+  now-stricter code raised a clear, diagnosable error instead of silently
+  picking wrong. That's the fix category working as intended (loud
+  failure over silent wrong answer), not a sign the fix was pointless --
+  but it's a real instance of "fixed it, tested the fix, still incomplete
+  on the first pass," worth naming rather than only logging the version
+  that worked.
+
+---
+
+## 2026-08-20 — `sft_lora_fp` eval complete: full precision doesn't beat QLoRA
+
+### What I did
+- `kaggle_sft_lora_fp_eval_only.ipynb` ran cleanly with the fixed
+  `find_adapter_dir()` (correctly resolved to the top-level adapter, not
+  a checkpoint or dry-run artifact) and the `torchao` uninstall. Real
+  result: `n=803, structure_ok=1.0, groundedness=0.9473, length_ok=1.0,
+  no_contradiction=0.995, aggregate=0.9856, parse_ok_rate=1.0`. Placed
+  `results/sft_lora_fp_gen.jsonl`/`sft_lora_fp_scored.jsonl` and appended
+  the row to `results/summary.csv`. Spot-checked 2 random rows by hand
+  (`random.seed(3)`) -- both well-grounded, faithful, perfect 1.0
+  aggregate.
+- Genuinely interesting ablation finding, not just "another number": full
+  precision (`sft_lora_fp`) scored marginally *worse* than 4-bit QLoRA
+  (`sft_qlora`) on every dimension that differed at all -- aggregate
+  0.9856 vs. 0.9877, groundedness 0.9473 vs. 0.9509, no_contradiction
+  0.995 vs. 1.0. Counter to the naive expectation that quantization noise
+  should only ever hurt, never help. The gaps are small (aggregate delta
+  0.0021) -- plausibly within run-to-run training noise rather than a
+  robust effect, and this project only ran each configuration once, so
+  the honest conclusion for the write-up is "QLoRA's 4-bit quantization
+  cost nothing here, possibly even net-neutral-to-positive" rather than
+  claiming a real, replicated full-precision-is-worse effect from a
+  single run each.
+
+### Full results table so far (same 803-row test set throughout)
+
+| run_id | aggregate | groundedness |
+|---|---|---|
+| baseline | 0.927 | 0.731 |
+| sft_qlora | 0.988 | 0.951 |
+| sft_lora_fp | 0.986 | 0.947 |
+| dpo_from_sft | 0.996 | 0.985 |
+
+### Why this approach (and what alternative was rejected, and why)
+- Did not overstate the full-precision-vs-QLoRA finding as a real effect
+  given only one run per configuration -- stated the honest uncertainty
+  (could be noise) directly rather than let a clean-looking number imply
+  more confidence than a single run supports.
+
+### Difficulty encountered
+- None -- this run went cleanly once the two adapter-finder bugs and the
+  `torchao` issue were fixed.
+
+---
+
+## 2026-08-20 — `dpo_from_base` complete: all five planned runs done
+
+### What I did
+- Ran `kaggle_dpo_from_base.ipynb` in parallel on a second Kaggle account
+  (to save wall-clock time now that every hard problem this session was
+  already solved) while `sft_lora_fp`'s eval finished on the first. Hit
+  one trivial setup issue along the way (`sft_test.jsonl` missing from
+  the second account's dataset upload -- just a missing file, not a code
+  bug) and fixed it by uploading the already-existing local copy.
+- Real result: `n=803, structure_ok=1.0, groundedness=0.9763,
+  length_ok=1.0, no_contradiction=1.0, aggregate=0.9941, parse_ok_rate=1.0`.
+  Placed `adapters/dpo_from_base/` (final adapter only, same
+  checkpoint/`ref`-subdirectory cleanup as every prior adapter) and
+  `results/dpo_from_base_{gen,scored}.jsonl`, appended the row to
+  `results/summary.csv`. Spot-checked 2 random rows by hand
+  (`random.seed(4)`) -- both well-grounded, faithful, perfect 1.0
+  aggregate.
+
+### Full results table -- all five planned runs complete (same 803-row test set throughout)
+
+| run_id | aggregate | groundedness | notes |
+|---|---|---|---|
+| baseline | 0.927 | 0.731 | zero-shot |
+| sft_qlora | 0.988 | 0.951 | SFT, QLoRA 4-bit |
+| sft_lora_fp | 0.986 | 0.947 | SFT, full precision (marginally *below* QLoRA) |
+| dpo_from_base | 0.994 | 0.976 | DPO alone, no SFT warm-start |
+| dpo_from_sft | **0.996** | **0.985** | SFT then DPO (best overall) |
+
+### The substantive finding worth highlighting in the write-up
+- `dpo_from_base` (0.994 aggregate, 0.976 groundedness) came within
+  0.002 aggregate / 0.009 groundedness of the full `dpo_from_sft`
+  pipeline (0.996 / 0.985) -- **and clearly beat SFT alone**
+  (`sft_qlora`: 0.988 / 0.951), despite never going through supervised
+  fine-tuning at all. DPO's own preference signal, applied directly to
+  the base model, got further on its own than SFT alone did.
+- Plausible explanation, not just a surprising number to report
+  uncritically: the `chosen` side of every DPO pair *is* the same clean
+  teacher-generated target SFT trains on (`build_dpo.py` -- one DPO pair
+  per cleaned SFT row, `chosen` = that row's `target` verbatim). So
+  `dpo_from_base` is implicitly learning to reproduce the same targets
+  SFT learns to reproduce, *plus* it gets the additional, explicit signal
+  of what to avoid (the six corruption types from `corrupt.py`) that
+  vanilla SFT never sees at all. That extra contrastive signal likely
+  explains why it doesn't just approach SFT's performance but exceeds
+  it, without needing SFT as a separate stage first.
+- Still the right call to run the full ablation grid rather than assume
+  this from first principles beforehand: it's a substantially more
+  interesting and defensible claim backed by a real head-to-head number
+  than either "DPO needs SFT first" (the common default assumption this
+  project's own spec started from, given `dpo_from_sft` was marked
+  `minimum_viable: true` and `dpo_from_base` was the optional ablation)
+  or "DPO alone is obviously enough" asserted without the comparison.
+
+### Difficulty encountered
+- None beyond the trivial missing-file setup issue on the second
+  account, resolved immediately once flagged.
+
+### What I'd do differently
+- Nothing on the code/process side. On interpretation: would want to
+  caveat in the write-up that this is one run per configuration, not a
+  multi-seed comparison -- the `dpo_from_base` vs. `dpo_from_sft` gap
+  (0.002 aggregate) is small enough that its *ranking* (DPO-then-more-DPO
+  still wins) is probably robust, but the *precise* margin shouldn't be
+  overstated as more precise than a single run supports, same caveat
+  already applied to the `sft_lora_fp` vs. `sft_qlora` comparison.
+
+---
