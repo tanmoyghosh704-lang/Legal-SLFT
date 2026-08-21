@@ -15,7 +15,11 @@ jsonlines
 scikit-learn
 
 # --- training (installed before local smoke test; mirrored in Kaggle notebook) ---
-torch
+# torch pinned to the CUDA 12.1 build -- an unpinned `torch` resolved to a
+# CPU-only 2.11.0 wheel when accelerate/bitsandbytes were installed locally
+# for FastAPI serving, silently dropping CUDA. Reinstall with:
+#   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1
 transformers
 trl
 peft

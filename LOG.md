@@ -2649,3 +2649,157 @@ Entry format:
   presentation of this work.
 
 ---
+
+## 2026-08-21 — FastAPI serving: local 3B download stall, then a pip-driven CUDA regression
+
+### What I did
+- Started building `src/serving/app.py`: a FastAPI app that loads the base
+  model (`Qwen/Qwen2.5-3B-Instruct`, 4-bit via `BitsAndBytesConfig`,
+  `device_map={"":0}` -- the same single-GPU pin used everywhere else in
+  this project) and attaches a configurable adapter (`ADAPTER_NAME` env
+  var, default `dpo_from_sft`, the best result on both metrics per
+  `WRITEUP.md`). Reuses `CANONICAL_PROMPT_TEMPLATE`, `parse_irac`, and
+  `is_substantive_clause` from `build_irac.py` rather than redefining them
+  -- one `/health` and one `/analyze` route.
+- Installed `fastapi`/`uvicorn` locally first, verified with the full
+  test suite that this alone didn't disturb the environment (it didn't).
+- Launched the server locally. This is the first time
+  `Qwen/Qwen2.5-3B-Instruct`'s full weights have ever been pulled to the
+  local machine -- every previous local run only ever touched the 0.5B
+  smoke-test model; the real 3B model was always loaded fresh on Kaggle.
+  `uvicorn.log` sat at "Fetching 2 files: 0%" for 7-8 minutes of polling
+  with no visible change.
+- Diagnosed the apparent stall: killed the server (assuming it was stuck),
+  then found via `Get-ChildItem` on the HF cache that the model was
+  actually fully downloaded -- both safetensors shards (3.97GB + 2.2GB,
+  matching the expected ~6.1GB bf16 total) were present. The `blobs/`
+  directory looked empty because Windows was storing the real file
+  content directly under `snapshots/` instead of `blobs/`+symlink (the
+  project's already-known Windows-symlink limitation, not a download
+  failure) -- checking `blobs/` alone gave a false "nothing downloaded"
+  read. Killing the server mid-way was an unnecessary reaction to a
+  misleading progress signal, not an actual problem.
+- Restarted the server. It crashed immediately (not a hang) with
+  `ImportError: Using bitsandbytes 4-bit quantization requires
+  accelerate: pip install 'accelerate>=1.1.0'`. Both `accelerate` and
+  `bitsandbytes` were listed in `requirements.txt` but had never actually
+  been `pip install`ed locally -- every prior use of them ran on Kaggle,
+  which installs its own environment.
+- `pip install accelerate bitsandbytes` succeeded, but silently upgraded
+  `torch` from the pinned `2.5.1+cu121` to an unrelated CPU-only
+  `2.11.0` build (the local `requirements.txt` had `torch` unpinned).
+  Caught this via the project's standing "verify torch/CUDA after every
+  pip install" discipline -- `torch.cuda.is_available()` came back
+  `False`.
+- Fixed by reinstalling the exact pinned build:
+  `pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121`.
+  This fixed `torch.cuda.is_available()` but left `torchvision` (auto-
+  upgraded to `0.26.0`, built against torch `2.11.0`) mismatched.
+  Assumed this was harmless (`torchvision` isn't imported anywhere in
+  this project) and moved on.
+- That assumption was wrong: running the test suite to confirm the fix
+  surfaced a real failure -- `peft` -> `transformers` -> (lazily, via
+  `BloomPreTrainedModel`) touches `torchvision::nms`, and the version
+  mismatch broke the op registration, which cascaded into
+  `ModuleNotFoundError: Could not import module 'BloomPreTrainedModel'`
+  on an unrelated model family, from inside `transformers`' lazy-import
+  machinery. Root-caused to the `torch`/`torchvision` ABI mismatch, not
+  a real missing symbol. Fixed by installing the version paired with
+  `torch==2.5.1` per the official compatibility matrix:
+  `torchvision==0.20.1 --index-url .../cu121`.
+- Test suite still failed after that, now on `torchaudio` (still at
+  `2.11.0`, same root cause) -- `transformers`' loss-function lazy import
+  chain pulls in `torchaudio`, which tries to load a native `.dll` built
+  for the wrong torch ABI: `OSError: [WinError 127] The specified
+  procedure could not be found`. Fixed the same way:
+  `torchaudio==2.5.1 --index-url .../cu121`.
+- Also installed `pytest` and `peft` locally (neither was actually
+  present locally despite being in `requirements.txt` and despite an
+  earlier claim in this session that the suite had been run -- that
+  claim was wrong; the local environment genuinely never had them).
+- With all three torch packages aligned (`torch==2.5.1+cu121`,
+  `torchvision==0.20.1+cu121`, `torchaudio==2.5.1+cu121`) and
+  `accelerate`/`bitsandbytes`/`peft`/`pytest` installed, the full suite
+  passed clean: 58 passed.
+- Pinned `torch==2.5.1` in `requirements.txt` (was unpinned) with a
+  comment recording the exact failure mode and the fix command, so this
+  doesn't silently repeat.
+
+### Why this approach (and what alternative was rejected, and why)
+- Didn't just pin `torchvision`/`torchaudio` blindly after the first
+  CUDA-loss scare -- re-ran the actual test suite after each fix instead
+  of trusting `torch.cuda.is_available()==True` alone, which is exactly
+  what caught the `torchvision` ABI break that `cuda.is_available()`
+  couldn't see (it's a separate package, not part of core torch's CUDA
+  check).
+- Didn't assume `torchvision` being unused by *this project's own code*
+  meant it was safe to leave mismatched -- `transformers` imports it
+  transitively (and lazily, so the failure only surfaces on specific
+  code paths, not at `import transformers` time), which is exactly the
+  kind of indirect breakage that "grep the codebase for the import" would
+  have missed. Running the tests, not just eyeballing import statements,
+  is what actually caught it.
+
+### Difficulty encountered
+- Misdiagnosed a slow-but-real download as a stall (killed a server that
+  didn't need killing) because `blobs/` alone is not a reliable progress
+  signal on Windows when huggingface_hub falls back to direct-copy mode
+  instead of symlinks.
+- A single `pip install accelerate bitsandbytes` cascaded into a three-
+  package version-alignment problem (`torch`+`torchvision`+`torchaudio`)
+  because `requirements.txt` had `torch` unpinned, so pip's resolver was
+  free to pick whatever `accelerate`/`bitsandbytes` were compatible with
+  -- which turned out to be latest-and-CPU-only, not the pinned CUDA
+  build already installed and working.
+
+### What I'd do differently
+- Check `torchvision`/`torchaudio` versions (not just `torch`) as part
+  of the standard "verify environment after pip install" check on this
+  project going forward, given both are transitively imported by
+  `transformers` and both are version-locked to a specific `torch` ABI.
+- Pin `torch` (and ideally `torchvision`/`torchaudio`) in
+  `requirements.txt` from the start of any project that mixes a specific
+  CUDA build with packages that don't pin their own torch dependency
+  tightly -- unpinned `torch` is an invitation for exactly this kind of
+  silent regression the moment any other package gets installed later.
+
+---
+
+## 2026-08-21 — FastAPI serving validated end-to-end
+
+### What I did
+- With the environment fixed (previous entry), restarted
+  `uvicorn src.serving.app:app` locally. Clean startup this time: model
+  loaded from the now-populated local HF cache (no re-download), 4-bit
+  weights loaded, `dpo_from_sft` adapter attached, "Application startup
+  complete" in well under a minute.
+- `GET /health` -> `{"status":"ok","model_id":"Qwen/Qwen2.5-3B-Instruct","adapter_name":"dpo_from_sft","cuda_available":true}`.
+- `POST /analyze` with a real termination clause (Non-Compete category)
+  produced a fully well-formed IRAC response -- all four sections present,
+  `parse_ok: true`, substantively correct legal reasoning (correctly
+  identified the clause as a standard, enforceable notice-based
+  termination provision).
+- Verified the rejection path too: `POST /analyze` with `clause_text:
+  "This"` (a fragment, same kind the training data itself filters out)
+  correctly returned `422` via `is_substantive_clause`, not a nonsense
+  generation.
+
+### Why this approach (and what alternative was rejected, and why)
+- Tested both the happy path and the rejection path before calling this
+  done, per this project's standing "validate before declaring success"
+  rule -- a `200` on a well-formed clause alone wouldn't have confirmed
+  the substantiveness filter (ported from the training-data cleaning
+  step in `build_irac.py`) actually does anything at inference time.
+
+### Difficulty encountered
+- None, once the environment (previous entry) was fixed.
+
+### What I'd do differently
+- Nothing to flag. FastAPI serving of the best adapter (`dpo_from_sft`)
+  is now working end-to-end locally. Remaining optional work: an MCP
+  wrapper around this service, and the still-deferred genuine human pass
+  on the judge-validation sample.
+
+---
+
+---

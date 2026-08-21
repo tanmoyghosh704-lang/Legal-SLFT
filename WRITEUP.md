@@ -429,7 +429,12 @@ said so — but a genuine human pass remains the more defensible thing to cite a
 
 ## 8. What's Left
 
-- FastAPI serving of the best adapter (`dpo_from_sft`), optionally with MCP.
+- **Done:** FastAPI serving of the best adapter (`dpo_from_sft`) — `src/serving/app.py`,
+  `/health` and `/analyze` routes, 4-bit quantized load with `device_map={"":0}`,
+  configurable adapter via `ADAPTER_NAME`, reuses the same prompt template, IRAC
+  parser, and clause-substantiveness filter as training/eval. Validated end-to-end
+  locally: well-formed IRAC output on a real clause, correct `422` rejection on a
+  fragment. An MCP wrapper around this service remains optional/not started.
 - A genuine human pass on the judge-validation sample, if time allows, to upgrade the
   §6.3 findings from "AI-triaged, Claude-verified" to fully human-validated.
 
